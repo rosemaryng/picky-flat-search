@@ -10,6 +10,7 @@ Revenue invariant: a payment is only ever stored as ``status="paid"`` once the
 PayPal capture is COMPLETED (one-off) or the subscription is ACTIVE. Everything
 else is recorded with its raw status and is excluded from revenue totals.
 """
+import threading
 import time
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
@@ -131,6 +132,46 @@ def create_app() -> Flask:
                 store.add_match(m)
                 break
         return redirect(url_for("index"))
+
+    @app.route("/api/trigger", methods=["POST"])
+    def api_trigger():
+        """Kick a fresh scan. Prefers the deployed Modal `trigger` function and
+        falls back to running a scan cycle in a background thread for local dev.
+        Optimistically flips the 'scan' agent to 'running' so the dashboard shows
+        activity immediately. Never 500s — failures are returned as JSON."""
+        try:
+            get_store().set_agent_status("scan", "running", started_at=time.time())
+            try:
+                import modal
+                modal.Function.from_name("flat-finder", "trigger").spawn()
+                mode = "modal"
+            except Exception:
+                import app_modal
+                threading.Thread(target=app_modal.run_scan_cycle,
+                                 daemon=True).start()
+                mode = "local"
+            return jsonify({"ok": True, "mode": mode})
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)})
+
+    @app.route("/api/seed-demo", methods=["POST"])
+    def api_seed_demo():
+        """Populate the store with the pre-scored demo matches for a guaranteed
+        demo, returning how many were written."""
+        from app_modal import seed_demo_data
+        produced = seed_demo_data(get_store())
+        return jsonify({"ok": True, "count": len(produced)})
+
+    @app.route("/api/status")
+    def api_status():
+        """Dashboard poll target: current scan heartbeat, store stats, and the
+        number of matches available."""
+        store = get_store()
+        return jsonify({
+            "scan": store.agents().get("scan"),
+            "stats": store.stats(),
+            "matches": len(store.matches(min_score=0)),
+        })
 
     return app
 
