@@ -132,6 +132,85 @@ def seed_brief_cycle(text=None, brief_id="brief-demo", store=None):
     return brief.to_dict()
 
 
+def demo_listings():
+    """Three hand-crafted, fully-enriched listings that match the demo brief well.
+
+    Used as a demo safety net so the golden path always has beautiful, high-scoring
+    matches to show, even if live portal scraping is slow or blocked.
+    """
+    from flatfinder.models import Listing
+
+    return [
+        Listing(
+            id="demo-londonfields-e8", source="Demo", price=2400, beds=2, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-e8",
+            address="Wilton Way, London Fields, Hackney, E8",
+            postcode="E8 1BG", property_type="Flat",
+            summary="Bright, modern 2-bed with a private balcony and a lift, south "
+                    "facing with floor-to-ceiling windows. Moments from London Fields.",
+            epc="B", sqm=72.0, has_lift=True, floor_level="3rd floor",
+            aspect="south-facing", pois={"gym": 3, "supermarket": 2, "park": 4},
+            transport={"nearest_station": "London Fields Overground", "walk_min": 5,
+                       "commute_min": 18},
+        ),
+        Listing(
+            id="demo-angel-n1", source="Demo", price=2200, beds=1, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-n1",
+            address="Duncan Terrace, Islington, N1",
+            postcode="N1 8BZ", property_type="Flat",
+            summary="Light and airy 1-bed in a modern block with a lift and concierge, "
+                    "bright south-facing reception. Steps from Angel.",
+            epc="C", sqm=54.0, has_lift=True, floor_level="5th floor",
+            aspect="south-facing", pois={"gym": 5, "supermarket": 3, "park": 2},
+            transport={"nearest_station": "Angel Underground", "walk_min": 4,
+                       "commute_min": 22},
+        ),
+        Listing(
+            id="demo-clapton-e5", source="Demo", price=2000, beds=1, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-e5",
+            address="Rushmore Road, Lower Clapton, E5",
+            postcode="E5 0EU", property_type="Flat",
+            summary="Stunning, bright top-floor 1-bed with a lift, south-facing and "
+                    "newly refurbished. Excellent transport links.",
+            epc="C", sqm=56.0, has_lift=True, floor_level="4th floor",
+            aspect="south-facing", pois={"gym": 2, "supermarket": 4, "park": 3},
+            transport={"nearest_station": "Clapton Overground", "walk_min": 7,
+                       "commute_min": 25},
+        ),
+    ]
+
+
+def seed_demo_data(store=None):
+    """Populate the store with 3 perfect, pre-scored matches for a guaranteed demo.
+
+    Scores + drafts each demo listing against the demo brief using the real
+    scoring/enquiry code, so the shortlist looks exactly like a live result.
+    Works on any store backend (writes directly to the shared ModalStore on Modal).
+    """
+    from flatfinder.enquiry import draft_enquiry
+    from flatfinder.models import Match
+    from flatfinder.pipeline import demo_brief
+    from flatfinder.scoring import score
+    from flatfinder.store import get_store
+
+    store = store or get_store()
+    brief = demo_brief()
+    store.upsert_brief(brief.to_dict())
+    produced = []
+    for lst in demo_listings():
+        store.upsert_listing(lst.to_dict())
+        sc, reasons = score(lst, brief)
+        m = Match(brief_id=brief.id, listing=lst, score=sc, reasons=reasons,
+                  status="drafted")
+        m.enquiry_draft = draft_enquiry(lst, brief)
+        store.add_match(m.to_dict())
+        produced.append(m.to_dict())
+    _set_status(store, "idle", action="seed_demo", last_matches=len(produced),
+                last_run=time.time())
+    logger.info("seeded %d demo matches", len(produced))
+    return produced
+
+
 # --------------------------------------------------------------------------- #
 # Modal wiring — only defined when the `modal` package is importable.           #
 # --------------------------------------------------------------------------- #
