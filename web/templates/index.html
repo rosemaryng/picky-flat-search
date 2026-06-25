@@ -54,13 +54,40 @@
     summary { cursor: pointer; color: #8ab4f8; font-size: 13px; }
     pre { white-space: pre-wrap; background: #0f1216; padding: 12px; border-radius: 8px;
           font-size: 13px; color: #cdd2d8; }
+    textarea.enquiry { width: 100%; box-sizing: border-box; resize: vertical;
+          background: #0f1216; border: 1px solid #1d2127; border-radius: 8px;
+          padding: 12px; font-size: 13px; line-height: 1.5; color: #cdd2d8;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     a { color: #8ab4f8; }
     button { background: #2f6df6; color: white; border: 0; padding: 8px 14px;
              border-radius: 8px; cursor: pointer; font-size: 13px; }
     button.ghost { background: #1d2530; color: #aebfd6; }
     button.send { background: #1f7a4d; }
+    button:disabled { opacity: .6; cursor: default; }
     .sent { color: #7ee0a8; font-size: 13px; font-weight: 600; }
     .sent::before { content: "✓ "; }
+    /* toolbar */
+    .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .toolbar button { font-size: 14px; padding: 10px 18px; font-weight: 600; }
+    .toolbar .primary { background: #2f6df6; }
+    .scan-msg { color: #9aa0a6; font-size: 13px; }
+    .spinner { display: inline-block; width: 13px; height: 13px; vertical-align: -2px;
+               border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+               border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* prominent agent status banner */
+    .status-banner { display: flex; align-items: center; gap: 12px;
+                     background: #11151a; border: 1px solid #1d2127; border-left: 3px solid #5b6470;
+                     border-radius: 10px; padding: 14px 16px; font-size: 15px; }
+    .status-banner.idle { border-left-color: #7ee0a8; }
+    .status-banner.running { border-left-color: #8ab4f8; }
+    .status-banner.error { border-left-color: #e2a3b4; }
+    .status-banner .status-dot { width: 11px; height: 11px; border-radius: 50%;
+                                 background: #5b6470; flex: none; }
+    .status-banner.idle .status-dot { background: #7ee0a8; }
+    .status-banner.running .status-dot { background: #8ab4f8; animation: pulse 2s infinite; }
+    .status-banner.error .status-dot { background: #e2a3b4; }
+    .status-banner b { color: #e8eaed; text-transform: capitalize; }
   </style>
 </head>
 <body>
@@ -87,6 +114,23 @@
   </header>
 
   <main>
+    {% set scan = heartbeat.agents.get('scan') if heartbeat.agents else None %}
+    <div class="toolbar">
+      <button id="search-now" class="primary"
+              data-last-run="{{ scan.last_run if scan and scan.last_run is defined else 0 }}">Search now</button>
+      <button id="load-demo" class="ghost">Load demo data</button>
+      <span id="scan-msg" class="scan-msg"></span>
+    </div>
+
+    <div class="status-banner {{ scan.status if scan else 'unknown' }}">
+      <span class="status-dot"></span>
+      <span class="status-text">
+        Agent status: <b>{{ scan.status if scan else 'idle' }}</b>
+        · last scan {{ heartbeat.last_seen }}
+        {% if scan and scan.last_matches is defined %} · {{ scan.last_matches }} matches{% endif %}
+      </span>
+    </div>
+
     <div class="heartbeat">
       <span class="dot {{ 'live' if heartbeat.alive else '' }}"></span>
       {% if heartbeat.count %}
@@ -130,12 +174,94 @@
           </div>
           <details>
             <summary>View enquiry draft</summary>
-            <pre>{{ m.enquiry_draft }}</pre>
+            <textarea class="enquiry" readonly rows="8" spellcheck="false">{{ m.enquiry_draft }}</textarea>
           </details>
         </div>
       </div>
     </div>
     {% endfor %}
   </main>
+
+  <script>
+    (function () {
+      const searchBtn = document.getElementById('search-now');
+      const demoBtn = document.getElementById('load-demo');
+      const scanMsg = document.getElementById('scan-msg');
+
+      function setScanning(on) {
+        if (!searchBtn) return;
+        searchBtn.disabled = on;
+        if (on) {
+          searchBtn.innerHTML = '<span class="spinner"></span> Scanning…';
+        } else {
+          searchBtn.textContent = 'Search now';
+        }
+      }
+
+      async function getScan() {
+        try {
+          const r = await fetch('/api/status', { headers: { 'Accept': 'application/json' } });
+          if (!r.ok) return null;
+          const d = await r.json();
+          if (d.scan) return d.scan;
+          if (d.heartbeat && d.heartbeat.agents) return d.heartbeat.agents.scan || null;
+          return null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      if (searchBtn) {
+        const baseline = parseFloat(searchBtn.dataset.lastRun || '0') || 0;
+        searchBtn.addEventListener('click', async () => {
+          if (scanMsg) scanMsg.textContent = '';
+          setScanning(true);
+          try {
+            await fetch('/api/trigger', { method: 'POST' });
+          } catch (e) {
+            /* network/route may be missing locally; still poll for status */
+          }
+          const started = Date.now();
+          const TIMEOUT_MS = 60000;
+          const poll = setInterval(async () => {
+            if (Date.now() - started > TIMEOUT_MS) {
+              clearInterval(poll);
+              setScanning(false);
+              if (scanMsg) scanMsg.textContent = 'Still scanning — refresh to check progress.';
+              return;
+            }
+            const scan = await getScan();
+            if (scan && scan.status === 'idle') {
+              const lastRun = parseFloat(scan.last_run || 0) || 0;
+              if (lastRun > baseline) {
+                clearInterval(poll);
+                window.location.reload();
+              }
+            }
+          }, 3000);
+        });
+      }
+
+      if (demoBtn) {
+        demoBtn.addEventListener('click', async () => {
+          const orig = demoBtn.textContent;
+          demoBtn.disabled = true;
+          demoBtn.textContent = 'Loading…';
+          try {
+            const r = await fetch('/api/seed-demo', { method: 'POST' });
+            if (r.ok) {
+              window.location.reload();
+              return;
+            }
+          } catch (e) {
+            /* fall through to re-enable */
+          }
+          demoBtn.disabled = false;
+          demoBtn.textContent = orig;
+          if (scanMsg) scanMsg.textContent = 'Could not load demo data.';
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
