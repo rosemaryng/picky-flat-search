@@ -10,6 +10,7 @@ Revenue invariant: a payment is only ever stored as ``status="paid"`` once the
 PayPal capture is COMPLETED (one-off) or the subscription is ACTIVE. Everything
 else is recorded with its raw status and is excluded from revenue totals.
 """
+import os
 import threading
 import time
 
@@ -63,7 +64,8 @@ def _record_paid(store, payment_id: str, settled: bool, amount: float, raw: dict
 
 
 def create_app() -> Flask:
-    app = Flask(__name__)
+    template_dir = os.environ.get("FLATFINDER_TEMPLATE_DIR")
+    app = Flask(__name__, template_folder=template_dir) if template_dir else Flask(__name__)
 
     @app.route("/")
     def index():
