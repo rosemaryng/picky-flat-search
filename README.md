@@ -25,14 +25,20 @@ your brief  ─▶  search  ─▶  check the details  ─▶  score & rank  ─
                              gyms · size · light     matches only       send                appear on their own
 ```
 
-## What makes Chirpie special
-- **Personalised, niche filters.** Normal property sites only let you filter by price,
-  beds and area. Chirpie understands the picky stuff they *can't* search — "white-fronted
-  period house", "high ceilings", "lots of natural light", "south-facing", "under 5 min
-  to a supermarket", "quick hop to the Tube". You describe your dream flat in your own
-  words and Chirpie matches it.
-- **It actually reads each listing for you** — enriching with data humans never check
-  (EPC, floor area, commute, nearby shops) so a missing detail never slips a bad flat in.
+## What makes Chirpie special ✨
+- **Personalised, niche filters ✨.** Normal property sites only let you filter by price,
+  beds and area. Chirpie understands the picky stuff they *can't* search. Just say it in
+  plain words, for example:
+  - 🏋️ "must have a gym within 5 mins walk"
+  - 🛒 "must have groceries within 5 mins walk"
+  - 🚇 "quick hop to the Tube — under 10 mins walk"
+  - ☀️ "south-facing with lots of natural light"
+  - 🏛️ "a charming white-fronted period conversion with high ceilings"
+  - 📏 "bigger than 35 sqm" · ⚡ "EPC C or better" · 🌳 "near a park"
+- **🤖 LLM-powered matching.** Chirpie uses an LLM to *understand* your wishlist (not just
+  keyword-match it) and to read each listing for you — enriching with data humans never
+  check (EPC, floor area, commute, nearby gyms & shops) — so it finds your perfect match
+  and a missing detail never slips a bad flat in.
 
 ## Business model
 - **Subscription:** Chirpie searches for new flats **every hour** and surfaces fresh
