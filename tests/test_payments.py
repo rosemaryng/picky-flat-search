@@ -255,6 +255,25 @@ def test_api_search_works_with_only_free_text(client, local_store, no_scan):
     assert any(b["id"] == "brief-user" for b in local_store.briefs())
 
 
+def test_api_search_picky_filters_and_min_sqm(client, local_store, no_scan):
+    resp = client.post("/api/search", data={
+        "brief_text": "A flat in Farringdon",
+        "min_sqm": "35",
+        "pick_no_basement": "1", "pick_lift": "1",
+        "pick_near_park": "1", "pick_pet_friendly": "1",
+    })
+    assert resp.status_code == 200 and resp.get_json()["ok"] is True
+    brief = next(b for b in local_store.briefs() if b["id"] == "brief-user")
+    assert brief["min_sqm"] == 35
+    assert "basement" in brief["avoid"]
+    assert "lift" in brief["must_have"] and "pet friendly" in brief["must_have"]
+    assert "park" in brief["nice_to_have"]
+
+
+def test_seed_demo_route_removed(client, local_store):
+    assert client.post("/api/seed-demo").status_code == 404
+
+
 def test_approve_send_marks_match_sent(client, local_store):
     match = {"brief_id": "b1", "score": 80, "reasons": [], "enquiry_draft": "hi",
              "status": "drafted",

@@ -40,6 +40,7 @@ class Brief:
     text: str                            # free-text wishlist
     max_price: Optional[int] = None
     min_beds: int = 0
+    min_sqm: Optional[float] = None      # minimum floor area in sqm
     areas: list[str] = field(default_factory=list)
     must_have: list[str] = field(default_factory=list)
     nice_to_have: list[str] = field(default_factory=list)

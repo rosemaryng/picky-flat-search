@@ -80,6 +80,24 @@ _FEATURE_FIELDS = {
     "garden": ("Garden", "garden"),
     "balcony": ("Balcony", "balcony"),
 }
+# "Chirpie's Picky Filters" — niche quick-pick toggles normal portals can't do.
+# form field "pick_<name>" == "1" -> (bucket, keyword, sentence). bucket is one
+# of "must" / "nice" / "avoid"; the keyword feeds the scorer, the sentence the
+# free-text brief.
+_QUICK_PICKS = {
+    "bills_included": ("must", "bills included",
+                       "Must have bills included."),
+    "lift": ("must", "lift", "Must have a lift."),
+    "no_basement": ("avoid", "basement",
+                    "No basement or lower-ground flats."),
+    "separate_kitchen": ("nice", "separate kitchen",
+                         "Nice to have a separate kitchen (not open-plan)."),
+    "furnished": ("must", "furnished", "Must be furnished."),
+    "unfurnished": ("must", "unfurnished", "Must be unfurnished."),
+    "pet_friendly": ("must", "pet friendly", "Must be pet friendly."),
+    "near_park": ("nice", "park", "Nice to be near a park or green space."),
+    "quiet_street": ("nice", "quiet", "Prefer a quiet street, not a main road."),
+}
 
 
 def _int_or_none(raw: str):
@@ -102,6 +120,7 @@ def _brief_from_form(form) -> "object":
     extra_sentences: list[str] = []
     must: list[str] = []
     nice: list[str] = []
+    avoid: list[str] = []
 
     for field_name, (label, keyword) in _WALK_FIELDS.items():
         choice = form.get(f"walk_{field_name}", "")
@@ -124,6 +143,13 @@ def _brief_from_form(form) -> "object":
             nice.append(keyword)
             extra_sentences.append(f"Nice to have {label.lower()}.")
 
+    # Chirpie's Picky Filters — niche quick-pick toggles
+    bucket_map = {"must": must, "nice": nice, "avoid": avoid}
+    for field_name, (bucket, keyword, sentence) in _QUICK_PICKS.items():
+        if form.get(f"pick_{field_name}") in ("1", "on", "true"):
+            bucket_map[bucket].append(keyword)
+            extra_sentences.append(sentence)
+
     full_text = " ".join(filter(None, [text] + extra_sentences)).strip()
     brief = parse(full_text or "A nice London flat", id="brief-user")
 
@@ -134,6 +160,9 @@ def _brief_from_form(form) -> "object":
     min_beds = _int_or_none(form.get("min_beds"))
     if min_beds is not None:
         brief.min_beds = min_beds
+    min_sqm = _int_or_none(form.get("min_sqm"))
+    if min_sqm is not None:
+        brief.min_sqm = min_sqm
     areas = [a.strip() for a in (form.get("areas") or "").split(",") if a.strip()]
     if areas:
         brief.areas = areas
@@ -143,6 +172,7 @@ def _brief_from_form(form) -> "object":
     brief.nice_to_have = list(dict.fromkeys(
         [n for n in brief.nice_to_have if n not in brief.must_have]
         + [n for n in nice if n not in brief.must_have]))
+    brief.avoid = list(dict.fromkeys(brief.avoid + avoid))
     return brief
 
 
@@ -270,14 +300,6 @@ def create_app() -> Flask:
                             "nice_to_have": brief.nice_to_have})
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)})
-
-    @app.route("/api/seed-demo", methods=["POST"])
-    def api_seed_demo():
-        """Populate the store with the pre-scored demo matches for a guaranteed
-        demo, returning how many were written."""
-        from app_modal import seed_demo_data
-        produced = seed_demo_data(get_store())
-        return jsonify({"ok": True, "count": len(produced)})
 
     @app.route("/api/status")
     def api_status():
