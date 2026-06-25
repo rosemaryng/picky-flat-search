@@ -7,7 +7,7 @@
 Built for the **Cursor "Hands Off" Hackathon**: a self-running agent that does the
 flat-hunting work for you.
 
-## How it works (in plain English)
+## How it works
 1. **You tell Chirpie what you want** in plain English (e.g. "a bright period
    conversion in Paddington or Farringdon, over 35 sqm, under 10 min walk to the Tube").
 2. **Chirpie searches every hour**, scanning London listings for you automatically.
