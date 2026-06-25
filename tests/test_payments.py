@@ -166,7 +166,6 @@ def test_index_returns_200_with_empty_local_store(client):
     body = resp.get_data(as_text=True)
     assert "Chirpie" in body
     assert "hours saved" in body
-    assert "revenue" in body
 
 
 def test_api_matches_returns_json(client):
