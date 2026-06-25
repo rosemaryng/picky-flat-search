@@ -9,7 +9,8 @@ PIP     := $(VENV)/bin/pip
 .DEFAULT_GOAL := help
 .PHONY: help setup demo web all clean
 
-help: ## Show this help
+# Show this help
+help:
 	@echo "flat-finder — make targets:"
 	@echo "  make setup   Create a .venv and install requirements"
 	@echo "  make demo    Run the pipeline once and print ranked matches"
@@ -21,18 +22,23 @@ $(PYTHON):
 	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip
 
-setup: $(PYTHON) ## Create venv + install requirements
+# Create venv + install requirements
+setup: $(PYTHON)
 	$(PIP) install -r requirements.txt
 	@echo "Setup complete. Next: 'make demo' or 'make web'."
 
-demo: setup ## Run the pipeline once and print ranked matches
+# Run the pipeline once and print ranked matches
+demo: setup
 	$(PYTHON) run_local.py
 
-web: setup ## Serve the dashboard at http://localhost:5000
+# Serve the dashboard at http://localhost:5000
+web: setup
 	@echo "Dashboard starting at http://localhost:5000 (Ctrl+C to stop)"
 	$(PYTHON) -m web.app
 
-all: setup demo web ## setup + demo, then launch the dashboard
+# setup + demo, then launch the dashboard
+all: setup demo web
 
-clean: ## Remove the virtualenv and local demo database
+# Remove the virtualenv and local demo database
+clean:
 	rm -rf $(VENV) local_db.json
