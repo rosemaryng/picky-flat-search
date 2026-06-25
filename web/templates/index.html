@@ -68,6 +68,33 @@
     button:disabled { opacity: .6; cursor: default; }
     .sent { color: var(--sky-deep); font-size: 13px; font-weight: 600; }
     .sent::before { content: "✓ "; }
+    /* search / brief form */
+    .search-card { background: #ffffff; border: 1px solid var(--line); border-radius: 14px;
+                   padding: 18px 20px; box-shadow: 0 2px 10px rgba(0,90,140,.07); display: grid; gap: 14px; }
+    .search-card h2 { margin: 0; font-size: 17px; color: var(--ink); }
+    .search-card .hint { color: var(--muted); font-size: 12px; margin-top: -8px; }
+    .search-card textarea.brief { width: 100%; box-sizing: border-box; resize: vertical;
+          background: #f5fbff; border: 1px solid var(--line); border-radius: 10px;
+          padding: 12px 14px; font-size: 14px; line-height: 1.5; color: var(--ink);
+          font-family: inherit; }
+    .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .field { display: grid; gap: 5px; }
+    .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .field input, .field select { width: 100%; box-sizing: border-box; padding: 8px 10px;
+          border: 1px solid var(--line); border-radius: 8px; font-size: 13px; color: var(--ink);
+          background: #f5fbff; font-family: inherit; }
+    .prefs { display: grid; gap: 10px; }
+    .prefs .grp-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .pref-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pref-row .pref-label { flex: 0 0 120px; font-size: 13px; }
+    .pref-row select { flex: 0 0 auto; min-width: 150px; padding: 7px 10px;
+          border: 1px solid var(--line); border-radius: 8px; font-size: 13px;
+          background: #f5fbff; color: var(--ink); font-family: inherit; }
+    .prefs-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 640px) { .prefs-cols { grid-template-columns: 1fr; } }
+    .active-brief { background: #e6f6ff; border: 1px solid var(--line); border-radius: 10px;
+          padding: 10px 14px; font-size: 13px; color: var(--sky-deep); }
+    .active-brief b { color: var(--ink); }
     /* toolbar */
     .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .toolbar button { font-size: 14px; padding: 10px 18px; font-weight: 700; }
@@ -117,12 +144,95 @@
 
   <main>
     {% set scan = heartbeat.agents.get('scan') if heartbeat.agents else None %}
-    <div class="toolbar">
-      <button id="search-now" class="primary"
-              data-last-run="{{ scan.last_run if scan and scan.last_run is defined else 0 }}">Start Scouting 🐦</button>
-      <button id="load-demo" class="ghost">Load demo nests</button>
-      <span id="scan-msg" class="scan-msg"></span>
+
+    <form id="search-form" class="search-card" onsubmit="return false">
+      <h2>Tell Chirpie what you're looking for 🐦</h2>
+      <div class="hint">Describe your dream nest in your own words — Chirpie reads it with AI. Add the must-haves below to be precise.</div>
+      <textarea id="brief-text" name="brief_text" class="brief" rows="3"
+        placeholder="e.g. A charming white-fronted period conversion in Paddington or Farringdon, bigger than 35 sqm, with high ceilings and lots of natural light. A quick hop to the Tube and groceries for my morning seeds!">{{ brief.text if brief else '' }}</textarea>
+
+      <div class="field-grid">
+        <div class="field">
+          <label for="areas">Areas (comma-separated)</label>
+          <input id="areas" name="areas" type="text" placeholder="Paddington, Farringdon"
+                 value="{{ brief.areas|join(', ') if brief and brief.areas else '' }}"/>
+        </div>
+        <div class="field">
+          <label for="max_price">Max price (£ pcm)</label>
+          <input id="max_price" name="max_price" type="number" min="0" step="50" placeholder="3200"
+                 value="{{ brief.max_price if brief and brief.max_price else '' }}"/>
+        </div>
+        <div class="field">
+          <label for="min_beds">Min bedrooms</label>
+          <input id="min_beds" name="min_beds" type="number" min="0" step="1" placeholder="1"
+                 value="{{ brief.min_beds if brief and brief.min_beds else '' }}"/>
+        </div>
+      </div>
+
+      <div class="prefs">
+        <div class="grp-title">How close should these be?</div>
+        <div class="pref-row">
+          <span class="pref-label">🏋️ Gym</span>
+          <select name="walk_gym">
+            <option value="">No preference</option>
+            <option value="must5">Must — within 5 mins walk</option>
+            <option value="must10">Must — within 10 mins walk</option>
+            <option value="nice">Nice to have nearby</option>
+          </select>
+        </div>
+        <div class="pref-row">
+          <span class="pref-label">🛒 Groceries</span>
+          <select name="walk_groceries">
+            <option value="">No preference</option>
+            <option value="must5">Must — within 5 mins walk</option>
+            <option value="must10">Must — within 10 mins walk</option>
+            <option value="nice">Nice to have nearby</option>
+          </select>
+        </div>
+        <div class="pref-row">
+          <span class="pref-label">🚇 Tube / station</span>
+          <select name="walk_tube">
+            <option value="">No preference</option>
+            <option value="must5">Must — within 5 mins walk</option>
+            <option value="must10">Must — within 10 mins walk</option>
+            <option value="nice">Nice to have nearby</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="prefs">
+        <div class="grp-title">Features</div>
+        <div class="prefs-cols">
+          <div class="prefs">
+            {% for fname, flabel in [('period','🏛️ Period conversion'), ('high_ceilings','📐 High ceilings'), ('natural_light','☀️ Natural light'), ('south_facing','🧭 South-facing'), ('garden','🌳 Garden'), ('balcony','🪴 Balcony')] %}
+            <div class="pref-row">
+              <span class="pref-label">{{ flabel }}</span>
+              <select name="feat_{{ fname }}">
+                <option value="">No preference</option>
+                <option value="must">Must have</option>
+                <option value="nice">Nice to have</option>
+              </select>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button id="search-now" class="primary" type="submit"
+                data-last-run="{{ scan.last_run if scan and scan.last_run is defined else 0 }}">Start Scouting 🐦</button>
+        <button id="load-demo" class="ghost" type="button">Load demo nests</button>
+        <span id="scan-msg" class="scan-msg"></span>
+      </div>
+    </form>
+
+    {% if brief %}
+    <div class="active-brief">
+      🐦 Chirpie is hunting for: <b>{{ brief.text }}</b>
+      {% if brief.must_have %}<br>Must have: <b>{{ brief.must_have|join(', ') }}</b>{% endif %}
+      {% if brief.nice_to_have %} · Nice to have: {{ brief.nice_to_have|join(', ') }}{% endif %}
     </div>
+    {% endif %}
 
     <div class="status-banner {{ scan.status if scan else 'unknown' }}">
       <span class="status-dot"></span>
@@ -217,13 +327,15 @@
         }
       }
 
-      if (searchBtn) {
+      const searchForm = document.getElementById('search-form');
+      if (searchBtn && searchForm) {
         const baseline = parseFloat(searchBtn.dataset.lastRun || '0') || 0;
-        searchBtn.addEventListener('click', async () => {
+        searchForm.addEventListener('submit', async (ev) => {
+          ev.preventDefault();
           if (scanMsg) scanMsg.textContent = '';
           setScanning(true);
           try {
-            await fetch('/api/trigger', { method: 'POST' });
+            await fetch('/api/search', { method: 'POST', body: new FormData(searchForm) });
           } catch (e) {
             /* network/route may be missing locally; still poll for status */
           }
