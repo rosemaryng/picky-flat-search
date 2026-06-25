@@ -234,10 +234,12 @@ class SupabaseStore:
         return r.data or []
 
     def upsert_brief(self, brief: dict):
-        self.sb.table("briefs").upsert(brief).execute()
+        self.sb.table("briefs").upsert(_flat_brief(brief)).execute()
 
     def briefs(self) -> list[dict]:
-        return self.sb.table("briefs").select("*").execute().data or []
+        rows = self.sb.table("briefs").select("*").execute().data or []
+        # full brief (incl. contact_*) is kept in the jsonb `data` column
+        return [r.get("data") or r for r in rows]
 
     def record_payment(self, payment: dict):
         self.sb.table("payments").upsert(payment).execute()
@@ -284,11 +286,22 @@ def _flat_listing(listing: dict) -> dict:
     return row
 
 
+def _flat_brief(brief: dict) -> dict:
+    """Keep only schema columns; stash the full brief (incl. contact_*) in `data`."""
+    keep = ("id", "text", "max_price", "min_beds", "areas", "must_have",
+            "nice_to_have", "avoid", "commute_to")
+    row = {k: brief.get(k) for k in keep}
+    row["data"] = brief
+    return row
+
+
 def get_store():
     """Auto-pick the backend, or honor FLATFINDER_STORE ("supabase"|"modal"|"local").
 
-    Default order: Supabase (if configured) -> shared modal.Dict -> local JSON.
-    All three expose the same interface and (Supabase/Modal) are shared across agents.
+    Auto-detect order: Supabase (if SUPABASE_URL/KEY set) -> local JSON.
+    The shared modal.Dict is used when FLATFINDER_STORE=modal (set by the Modal
+    workers); it isn't auto-detected because it requires a Modal context.
+    All backends expose the same interface; Supabase/modal.Dict are shared across agents.
     """
     forced = os.environ.get("FLATFINDER_STORE", "")
     if forced == "local":

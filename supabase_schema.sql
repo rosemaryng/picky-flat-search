@@ -11,6 +11,7 @@ create table if not exists briefs (
   nice_to_have  jsonb,
   avoid         jsonb,
   commute_to    text,
+  data          jsonb,          -- full brief payload (incl. contact_*)
   created_at    timestamptz default now()
 );
 
