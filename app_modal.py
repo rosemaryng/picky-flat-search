@@ -132,6 +132,88 @@ def seed_brief_cycle(text=None, brief_id="brief-demo", store=None):
     return brief.to_dict()
 
 
+def demo_listings():
+    """Three hand-crafted, fully-enriched listings that match the demo brief well.
+
+    Used as a demo safety net so the golden path always has beautiful, high-scoring
+    matches to show, even if live portal scraping is slow or blocked.
+    """
+    from flatfinder.models import Listing
+
+    return [
+        Listing(
+            id="demo-paddington-w2", source="Demo", price=2900, beds=1, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-w2",
+            address="Sussex Gardens, Paddington, W2",
+            postcode="W2 2RU", property_type="Period conversion flat",
+            summary="Charming white-fronted period conversion with soaring high ceilings "
+                    "and floor-to-ceiling sash windows flooding the rooms with natural "
+                    "light. South-facing and moments from Paddington station and Waitrose.",
+            epc="C", sqm=48.0, has_lift=False, floor_level="1st floor",
+            aspect="south-facing", pois={"gym": 3, "supermarket": 2, "park": 4},
+            transport={"nearest_station": "Paddington Underground", "walk_min": 4,
+                       "commute_min": 16},
+        ),
+        Listing(
+            id="demo-farringdon-ec1", source="Demo", price=3050, beds=1, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-ec1",
+            address="St John Street, Farringdon, EC1",
+            postcode="EC1V 4PY", property_type="Period conversion flat",
+            summary="Elegant white-fronted period conversion bursting with natural light, "
+                    "original high ceilings and large bright windows. South-facing, steps "
+                    "from Farringdon station and a Sainsbury's for the morning seeds.",
+            epc="C", sqm=52.0, has_lift=False, floor_level="2nd floor",
+            aspect="south-facing", pois={"gym": 4, "supermarket": 3, "park": 2},
+            transport={"nearest_station": "Farringdon Underground", "walk_min": 5,
+                       "commute_min": 12},
+        ),
+        Listing(
+            id="demo-paddington-house-w2", source="Demo", price=3150, beds=2, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-w2-house",
+            address="Norfolk Crescent, Paddington, W2",
+            postcode="W2 2DS", property_type="White-fronted period house",
+            summary="Adorable white-fronted period house with grand high ceilings and "
+                    "lots of natural light throughout, south-facing garden. A quick hop "
+                    "to the Tube and a grocery store right on the corner.",
+            epc="B", sqm=70.0, has_lift=False, floor_level="house",
+            aspect="south-facing", pois={"gym": 2, "supermarket": 4, "park": 3},
+            transport={"nearest_station": "Edgware Road Underground", "walk_min": 6,
+                       "commute_min": 18},
+        ),
+    ]
+
+
+def seed_demo_data(store=None):
+    """Populate the store with 3 perfect, pre-scored matches for a guaranteed demo.
+
+    Scores + drafts each demo listing against the demo brief using the real
+    scoring/enquiry code, so the shortlist looks exactly like a live result.
+    Works on any store backend (writes directly to the shared ModalStore on Modal).
+    """
+    from flatfinder.enquiry import draft_enquiry
+    from flatfinder.models import Match
+    from flatfinder.pipeline import demo_brief
+    from flatfinder.scoring import score
+    from flatfinder.store import get_store
+
+    store = store or get_store()
+    brief = demo_brief()
+    store.upsert_brief(brief.to_dict())
+    produced = []
+    for lst in demo_listings():
+        store.upsert_listing(lst.to_dict())
+        sc, reasons = score(lst, brief)
+        m = Match(brief_id=brief.id, listing=lst, score=sc, reasons=reasons,
+                  status="drafted")
+        m.enquiry_draft = draft_enquiry(lst, brief)
+        store.add_match(m.to_dict())
+        produced.append(m.to_dict())
+    _set_status(store, "idle", action="seed_demo", last_matches=len(produced),
+                last_run=time.time())
+    logger.info("seeded %d demo matches", len(produced))
+    return produced
+
+
 # --------------------------------------------------------------------------- #
 # Modal wiring — only defined when the `modal` package is importable.           #
 # --------------------------------------------------------------------------- #
@@ -147,6 +229,9 @@ if modal is not None:
         .pip_install("openai", "flask")
         .env({"FLATFINDER_STORE": "modal"})  # use the shared modal.Dict store
         .add_local_python_source("flatfinder", "payments", "web")
+        # Jinja templates aren't .py files, so the package mount above skips them.
+        # Ship them to a dedicated path and point Flask at it via FLATFINDER_TEMPLATE_DIR.
+        .add_local_dir("web/templates", remote_path="/assets/web_templates")
     )
 
     app = modal.App("flat-finder")
@@ -176,6 +261,15 @@ if modal is not None:
         return seed_brief_cycle(text=text or None, brief_id=brief_id)
 
     @app.function(image=image, secrets=secrets)
+    def seed_demo():
+        """Populate the shared store with 3 perfect demo matches (safety net).
+
+        `modal run app_modal.py::seed_demo`
+        """
+        os.environ["FLATFINDER_STORE"] = "modal"
+        return seed_demo_data()
+
+    @app.function(image=image, secrets=secrets)
     def submit(brief_id: str, listing_id: str):
         """On-demand: register interest / request a viewing for one match."""
         os.environ["FLATFINDER_STORE"] = "modal"
@@ -196,6 +290,7 @@ if modal is not None:
     @modal.wsgi_app()
     def web():
         os.environ["FLATFINDER_STORE"] = "modal"
+        os.environ.setdefault("FLATFINDER_TEMPLATE_DIR", "/assets/web_templates")
         from web.app import create_app
         return create_app()
 

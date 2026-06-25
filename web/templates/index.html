@@ -3,77 +3,106 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>flat-finder — autonomous London rental agent</title>
+  <title>Chirpie 🐦 — your autonomous London nest-finder</title>
   <style>
-    :root { color-scheme: dark; }
+    /* Chirpie bird theme: Sky Blue #00BAFF, Cloud White #FFFFFF, Beak Yellow #FFD700 */
+    :root { color-scheme: light; --sky: #00BAFF; --sky-deep: #0098d6;
+            --beak: #FFD700; --ink: #0b3a52; --muted: #5b7a8c; --line: #d6ecf7; }
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, system-ui, sans-serif; margin: 0;
-           background: #0b0d10; color: #e8eaed; }
-    header { padding: 24px 32px; border-bottom: 1px solid #1d2127;
-             display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    h1 { font-size: 20px; margin: 0; }
-    .sub { color: #9aa0a6; font-size: 13px; }
+    body { font-family: -apple-system, system-ui, sans-serif; margin: 0; color: var(--ink);
+           background: linear-gradient(180deg, #d8f2ff 0%, #f3fbff 240px, #ffffff 520px); }
+    header { padding: 24px 32px; border-bottom: 1px solid var(--line);
+             display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+             background: rgba(255,255,255,.7); }
+    h1 { font-size: 24px; margin: 0; color: var(--ink); }
+    .sub { color: var(--muted); font-size: 13px; max-width: 560px; }
     .stats { display: flex; gap: 28px; margin-left: auto; flex-wrap: wrap; }
-    .stat b { font-size: 22px; display: block; line-height: 1.2; }
-    .stat span { color: #9aa0a6; font-size: 12px; }
-    .stat .accent { color: #7ee0a8; }
+    .stat b { font-size: 22px; display: block; line-height: 1.2; color: var(--ink); }
+    .stat span { color: var(--muted); font-size: 12px; }
+    .stat .accent { color: var(--sky-deep); }
     .pay { display: flex; gap: 8px; align-items: center; }
     main { padding: 24px 32px; display: grid; gap: 14px; max-width: 1000px; }
     /* agent heartbeat strip */
     .heartbeat { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-                 background: #11151a; border: 1px solid #1d2127; border-radius: 10px;
-                 padding: 10px 14px; color: #9aa0a6; font-size: 13px; }
-    .dot { width: 9px; height: 9px; border-radius: 50%; background: #5b6470;
-           box-shadow: 0 0 0 0 rgba(126,224,168,.7); }
-    .dot.live { background: #7ee0a8; animation: pulse 2s infinite; }
+                 background: #ffffff; border: 1px solid var(--line); border-radius: 10px;
+                 padding: 10px 14px; color: var(--muted); font-size: 13px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #b9cdd9;
+           box-shadow: 0 0 0 0 rgba(0,186,255,.7); }
+    .dot.live { background: var(--sky); animation: pulse 2s infinite; }
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(126,224,168,.6); }
-      70% { box-shadow: 0 0 0 7px rgba(126,224,168,0); }
-      100% { box-shadow: 0 0 0 0 rgba(126,224,168,0); }
+      0% { box-shadow: 0 0 0 0 rgba(0,186,255,.6); }
+      70% { box-shadow: 0 0 0 7px rgba(0,186,255,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,186,255,0); }
     }
-    .agent-pill { background: #1d2530; color: #aebfd6; font-size: 12px;
+    .agent-pill { background: #e6f6ff; color: var(--sky-deep); font-size: 12px;
                   padding: 2px 9px; border-radius: 999px; }
-    .card { background: #14171c; border: 1px solid #1d2127; border-radius: 12px;
-            padding: 16px 18px; }
+    .card { background: #ffffff; border: 1px solid var(--line); border-radius: 12px;
+            padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,90,140,.06); }
     .row { display: flex; justify-content: space-between; gap: 16px; }
     /* score badge */
     .score { font-size: 22px; font-weight: 700; min-width: 56px; height: 56px;
              display: flex; align-items: center; justify-content: center;
-             border-radius: 12px; color: #0b0d10; background: #7ee0a8; }
-    .score.mid { background: #e0c97e; }
-    .score.low { background: #e2a3b4; }
-    .addr { font-weight: 600; }
-    .meta { color: #9aa0a6; font-size: 13px; margin-top: 2px; }
+             border-radius: 12px; color: #ffffff; background: var(--sky); }
+    .score.mid { background: var(--beak); color: #5a4b00; }
+    .score.low { background: #ffd0db; color: #7a2740; }
+    .addr { font-weight: 600; font-size: 15px; }
+    .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
     .tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
-    .tag { background: #1d2530; color: #aebfd6; font-size: 12px; padding: 2px 8px;
+    .tag { background: #e6f6ff; color: var(--sky-deep); font-size: 12px; padding: 2px 8px;
            border-radius: 999px; }
-    .tag.neg { background: #33222a; color: #e2a3b4; }
+    .tag.love { background: var(--beak); color: #5a4b00; font-weight: 600; }
+    .tag.neg { background: #ffe3ea; color: #a23a55; }
     .actions { margin-top: 12px; display: flex; align-items: center; gap: 12px;
                flex-wrap: wrap; }
     details { margin-top: 10px; }
-    summary { cursor: pointer; color: #8ab4f8; font-size: 13px; }
-    pre { white-space: pre-wrap; background: #0f1216; padding: 12px; border-radius: 8px;
-          font-size: 13px; color: #cdd2d8; }
-    a { color: #8ab4f8; }
-    button { background: #2f6df6; color: white; border: 0; padding: 8px 14px;
-             border-radius: 8px; cursor: pointer; font-size: 13px; }
-    button.ghost { background: #1d2530; color: #aebfd6; }
-    button.send { background: #1f7a4d; }
-    .sent { color: #7ee0a8; font-size: 13px; font-weight: 600; }
+    summary { cursor: pointer; color: var(--sky-deep); font-size: 13px; }
+    textarea.enquiry { width: 100%; box-sizing: border-box; resize: vertical;
+          background: #f5fbff; border: 1px solid var(--line); border-radius: 8px;
+          padding: 12px; font-size: 13px; line-height: 1.5; color: var(--ink);
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    a { color: var(--sky-deep); }
+    button { background: var(--sky); color: white; border: 0; padding: 8px 14px;
+             border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    button.ghost { background: #e6f6ff; color: var(--sky-deep); }
+    button.send { background: var(--beak); color: #5a4b00; }
+    button:disabled { opacity: .6; cursor: default; }
+    .sent { color: var(--sky-deep); font-size: 13px; font-weight: 600; }
     .sent::before { content: "✓ "; }
+    /* toolbar */
+    .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .toolbar button { font-size: 14px; padding: 10px 18px; font-weight: 700; }
+    .toolbar .primary { background: var(--beak); color: #5a4b00;
+                        box-shadow: 0 2px 8px rgba(255,215,0,.4); }
+    .scan-msg { color: var(--muted); font-size: 13px; }
+    .spinner { display: inline-block; width: 13px; height: 13px; vertical-align: -2px;
+               border: 2px solid rgba(90,75,0,.35); border-top-color: #5a4b00;
+               border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* prominent flight-status banner */
+    .status-banner { display: flex; align-items: center; gap: 12px;
+                     background: #ffffff; border: 1px solid var(--line); border-left: 4px solid #b9cdd9;
+                     border-radius: 10px; padding: 14px 16px; font-size: 15px; }
+    .status-banner.idle { border-left-color: var(--sky); }
+    .status-banner.running { border-left-color: var(--beak); background: #fffdf2; }
+    .status-banner.error { border-left-color: #e2536f; }
+    .status-banner .status-dot { width: 11px; height: 11px; border-radius: 50%;
+                                 background: #b9cdd9; flex: none; }
+    .status-banner.idle .status-dot { background: var(--sky); }
+    .status-banner.running .status-dot { background: var(--beak); animation: pulse 2s infinite; }
+    .status-banner.error .status-dot { background: #e2536f; }
+    .status-banner b { color: var(--ink); text-transform: capitalize; }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>flat-finder</h1>
-      <div class="sub">autonomous London rental agent — it hunts, filters &amp; drafts enquiries while you don't</div>
+      <h1>Chirpie 🐦</h1>
+      <div class="sub">Stop the hunt. Let Chirpie fly the London streets to find your perfect nest — finding, scoring &amp; drafting enquiries on autopilot while you sleep, no matter how picky you are.</div>
     </div>
     <div class="stats">
-      <div class="stat"><b>{{ stats.listings }}</b><span>listings seen</span></div>
-      <div class="stat"><b>{{ stats.matches }}</b><span>matches</span></div>
+      <div class="stat"><b>{{ stats.listings }}</b><span>streets scouted</span></div>
+      <div class="stat"><b>{{ stats.matches }}</b><span>nests found</span></div>
       <div class="stat"><b class="accent">{{ hours_saved }}h</b><span>hours saved</span></div>
-      <div class="stat"><b class="accent">£{{ '%.2f'|format(stats.revenue) }}</b><span>revenue</span></div>
     </div>
     <div class="pay">
       <form action="/upgrade" method="post">
@@ -87,21 +116,42 @@
   </header>
 
   <main>
+    {% set scan = heartbeat.agents.get('scan') if heartbeat.agents else None %}
+    <div class="toolbar">
+      <button id="search-now" class="primary"
+              data-last-run="{{ scan.last_run if scan and scan.last_run is defined else 0 }}">Start Scouting 🐦</button>
+      <button id="load-demo" class="ghost">Load demo nests</button>
+      <span id="scan-msg" class="scan-msg"></span>
+    </div>
+
+    <div class="status-banner {{ scan.status if scan else 'unknown' }}">
+      <span class="status-dot"></span>
+      <span class="status-text">
+        {% if scan and scan.status == 'running' %}
+          Chirpie is flying over London… 🕊️
+        {% else %}
+          Chirpie's Flight Status: <b>{{ scan.status if scan else 'idle' }}</b>
+          · last scan {{ heartbeat.last_seen }}
+          {% if scan and scan.last_matches is defined %} · {{ scan.last_matches }} nests found{% endif %}
+        {% endif %}
+      </span>
+    </div>
+
     <div class="heartbeat">
       <span class="dot {{ 'live' if heartbeat.alive else '' }}"></span>
       {% if heartbeat.count %}
         <span>agent last active <b>{{ heartbeat.last_seen }}</b></span>
         {% for name, a in heartbeat.agents.items() %}
-          <span class="agent-pill">{{ name }}: {{ a.status }}{% if a.last_matches is defined %} · {{ a.last_matches }} matches{% endif %}</span>
+          <span class="agent-pill">{{ name }}: {{ a.status }}{% if a.last_matches is defined %} · {{ a.last_matches }} nests{% endif %}</span>
         {% endfor %}
       {% else %}
-        <span>no agent has checked in yet — run <code>python run_local.py</code> to start the scan loop</span>
+        <span>Chirpie hasn't taken flight yet — run <code>python run_local.py</code> to start scouting</span>
       {% endif %}
       <span style="margin-left:auto">{{ stats.briefs }} brief{{ '' if stats.briefs == 1 else 's' }} · {{ stats.viewings }} viewing{{ '' if stats.viewings == 1 else 's' }}</span>
     </div>
 
     {% if not matches %}
-      <p class="sub">No matches yet. Run <code>python run_local.py</code> to populate.</p>
+      <p class="sub">No nests found yet. Click <b>Start Scouting</b> (or <b>Load demo nests</b>) to send Chirpie flying.</p>
     {% endif %}
     {% for m in matches %}
     {% set l = m.listing %}
@@ -109,11 +159,11 @@
       <div class="row">
         <div class="score {{ 'low' if m.score < 55 else 'mid' if m.score < 70 else '' }}">{{ '%.0f'|format(m.score) }}</div>
         <div style="flex:1">
-          <div class="addr">{{ l.address }} — £{{ l.price }} pcm</div>
+          <div class="addr">🐦 {{ l.address }} — £{{ l.price }} pcm</div>
           <div class="meta">{{ l.source }} · {{ l.beds }} bed{% if l.sqm %} · {{ '%.0f'|format(l.sqm) }} sqm{% endif %}{% if l.epc %} · EPC {{ l.epc }}{% endif %}{% if l.transport and l.transport.walk_min is not none %} · {{ l.transport.walk_min }} min to {{ l.transport.nearest_station }}{% endif %}</div>
           <div class="tags">
             {% for r in m.reasons %}
-              <span class="tag {{ 'neg' if r.startswith('-') or 'OVER' in r or 'MISSING' in r else '' }}">{{ r }}</span>
+              <span class="tag {{ 'neg' if r.startswith('-') or 'OVER' in r or 'MISSING' in r else 'love' if 'Chirpie' in r else '' }}">{{ r }}</span>
             {% endfor %}
           </div>
           <div class="actions">
@@ -130,12 +180,94 @@
           </div>
           <details>
             <summary>View enquiry draft</summary>
-            <pre>{{ m.enquiry_draft }}</pre>
+            <textarea class="enquiry" readonly rows="8" spellcheck="false">{{ m.enquiry_draft }}</textarea>
           </details>
         </div>
       </div>
     </div>
     {% endfor %}
   </main>
+
+  <script>
+    (function () {
+      const searchBtn = document.getElementById('search-now');
+      const demoBtn = document.getElementById('load-demo');
+      const scanMsg = document.getElementById('scan-msg');
+
+      function setScanning(on) {
+        if (!searchBtn) return;
+        searchBtn.disabled = on;
+        if (on) {
+          searchBtn.innerHTML = '<span class="spinner"></span> Chirpie is flying… 🕊️';
+        } else {
+          searchBtn.textContent = 'Start Scouting 🐦';
+        }
+      }
+
+      async function getScan() {
+        try {
+          const r = await fetch('/api/status', { headers: { 'Accept': 'application/json' } });
+          if (!r.ok) return null;
+          const d = await r.json();
+          if (d.scan) return d.scan;
+          if (d.heartbeat && d.heartbeat.agents) return d.heartbeat.agents.scan || null;
+          return null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      if (searchBtn) {
+        const baseline = parseFloat(searchBtn.dataset.lastRun || '0') || 0;
+        searchBtn.addEventListener('click', async () => {
+          if (scanMsg) scanMsg.textContent = '';
+          setScanning(true);
+          try {
+            await fetch('/api/trigger', { method: 'POST' });
+          } catch (e) {
+            /* network/route may be missing locally; still poll for status */
+          }
+          const started = Date.now();
+          const TIMEOUT_MS = 60000;
+          const poll = setInterval(async () => {
+            if (Date.now() - started > TIMEOUT_MS) {
+              clearInterval(poll);
+              setScanning(false);
+              if (scanMsg) scanMsg.textContent = 'Chirpie is still flying — refresh to check progress.';
+              return;
+            }
+            const scan = await getScan();
+            if (scan && scan.status === 'idle') {
+              const lastRun = parseFloat(scan.last_run || 0) || 0;
+              if (lastRun > baseline) {
+                clearInterval(poll);
+                window.location.reload();
+              }
+            }
+          }, 3000);
+        });
+      }
+
+      if (demoBtn) {
+        demoBtn.addEventListener('click', async () => {
+          const orig = demoBtn.textContent;
+          demoBtn.disabled = true;
+          demoBtn.textContent = 'Loading…';
+          try {
+            const r = await fetch('/api/seed-demo', { method: 'POST' });
+            if (r.ok) {
+              window.location.reload();
+              return;
+            }
+          } catch (e) {
+            /* fall through to re-enable */
+          }
+          demoBtn.disabled = false;
+          demoBtn.textContent = orig;
+          if (scanMsg) scanMsg.textContent = 'Could not load demo nests.';
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
