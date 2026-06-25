@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>flat-finder — autonomous London rental agent</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: -apple-system, system-ui, sans-serif; margin: 0;
+           background: #0b0d10; color: #e8eaed; }
+    header { padding: 24px 32px; border-bottom: 1px solid #1d2127;
+             display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+    h1 { font-size: 20px; margin: 0; }
+    .sub { color: #9aa0a6; font-size: 13px; }
+    .stats { display: flex; gap: 28px; margin-left: auto; }
+    .stat b { font-size: 22px; display: block; }
+    .stat span { color: #9aa0a6; font-size: 12px; }
+    main { padding: 24px 32px; display: grid; gap: 14px; max-width: 1000px; }
+    .card { background: #14171c; border: 1px solid #1d2127; border-radius: 12px;
+            padding: 16px 18px; }
+    .row { display: flex; justify-content: space-between; gap: 16px; }
+    .score { font-size: 26px; font-weight: 700; color: #7ee0a8; min-width: 64px; }
+    .score.low { color: #e0c97e; }
+    .addr { font-weight: 600; }
+    .meta { color: #9aa0a6; font-size: 13px; margin-top: 2px; }
+    .tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag { background: #1d2530; color: #aebfd6; font-size: 12px; padding: 2px 8px;
+           border-radius: 999px; }
+    .tag.neg { background: #33222a; color: #e2a3b4; }
+    details { margin-top: 10px; }
+    summary { cursor: pointer; color: #8ab4f8; font-size: 13px; }
+    pre { white-space: pre-wrap; background: #0f1216; padding: 12px; border-radius: 8px;
+          font-size: 13px; color: #cdd2d8; }
+    a { color: #8ab4f8; }
+    .pay { margin-left: auto; }
+    button { background: #2f6df6; color: white; border: 0; padding: 8px 14px;
+             border-radius: 8px; cursor: pointer; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>flat-finder</h1>
+      <div class="sub">autonomous London rental agent — it hunts, filters &amp; drafts enquiries while you don't</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>{{ stats.listings }}</b><span>listings seen</span></div>
+      <div class="stat"><b>{{ stats.matches }}</b><span>matches</span></div>
+      <div class="stat"><b>£{{ '%.2f'|format(stats.revenue) }}</b><span>revenue</span></div>
+    </div>
+    <form class="pay" action="/simulate-payment" method="post">
+      <button type="submit">Upgrade to Pro — £9.99</button>
+    </form>
+  </header>
+  <main>
+    {% if not matches %}
+      <p class="sub">No matches yet. Run <code>python run_local.py</code> to populate.</p>
+    {% endif %}
+    {% for m in matches %}
+    {% set l = m.listing %}
+    <div class="card">
+      <div class="row">
+        <div class="score {{ 'low' if m.score < 65 else '' }}">{{ '%.0f'|format(m.score) }}</div>
+        <div style="flex:1">
+          <div class="addr">{{ l.address }} — £{{ l.price }} pcm</div>
+          <div class="meta">{{ l.source }} · {{ l.beds }} bed{% if l.sqm %} · {{ '%.0f'|format(l.sqm) }} sqm{% endif %}{% if l.epc %} · EPC {{ l.epc }}{% endif %}{% if l.transport and l.transport.walk_min is not none %} · {{ l.transport.walk_min }} min to {{ l.transport.nearest_station }}{% endif %}</div>
+          <div class="tags">
+            {% for r in m.reasons %}
+              <span class="tag {{ 'neg' if r.startswith('-') or 'OVER' in r or 'MISSING' in r else '' }}">{{ r }}</span>
+            {% endfor %}
+          </div>
+          <details>
+            <summary>View enquiry draft &amp; link</summary>
+            <p><a href="{{ l.url }}" target="_blank">Open listing ↗</a></p>
+            <pre>{{ m.enquiry_draft }}</pre>
+          </details>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Core pipeline uses only the Python stdlib, so it runs offline with no installs.
+# These are for the optional integrations:
+flask>=3.0            # web dashboard
+openai>=1.40          # LLM brief-parsing, floorplan vision, scoring (optional)
+modal>=0.64           # hands-off scheduling + shared modal.Dict store (optional)
+playwright>=1.44      # enquiry auto-submission (optional, off by default)

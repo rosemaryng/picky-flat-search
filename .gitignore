@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+local_db.json
+.venv/
+venv/
+.modal/
+*.egg-info/
+.pytest_cache/
