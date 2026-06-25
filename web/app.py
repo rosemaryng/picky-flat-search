@@ -63,6 +63,126 @@ def _record_paid(store, payment_id: str, settled: bool, amount: float, raw: dict
     return status
 
 
+# Walkability controls shown in the search form. Each maps a POI to a brief
+# keyword the scorer understands. Form values: "" (no pref) / "must5" / "must10"
+# / "nice".
+_WALK_FIELDS = {
+    "gym": ("Gym", "gym"),
+    "groceries": ("Groceries", "groceries"),
+    "tube": ("Tube / station", "near the tube"),
+}
+# Feature checkboxes: form field -> (label, brief keyword).
+_FEATURE_FIELDS = {
+    "period": ("Period conversion", "period"),
+    "high_ceilings": ("High ceilings", "high ceilings"),
+    "natural_light": ("Natural light", "natural light"),
+    "south_facing": ("South-facing", "south facing"),
+    "garden": ("Garden", "garden"),
+    "balcony": ("Balcony", "balcony"),
+}
+# "Chirpie's Picky Filters" — niche quick-pick toggles normal portals can't do.
+# form field "pick_<name>" == "1" -> (bucket, keyword, sentence). bucket is one
+# of "must" / "nice" / "avoid"; the keyword feeds the scorer, the sentence the
+# free-text brief.
+_QUICK_PICKS = {
+    "bills_included": ("must", "bills included",
+                       "Must have bills included."),
+    "lift": ("must", "lift", "Must have a lift."),
+    "no_basement": ("avoid", "basement",
+                    "No basement or lower-ground flats."),
+    "separate_kitchen": ("nice", "separate kitchen",
+                         "Nice to have a separate kitchen (not open-plan)."),
+    "furnished": ("must", "furnished", "Must be furnished."),
+    "unfurnished": ("must", "unfurnished", "Must be unfurnished."),
+    "pet_friendly": ("must", "pet friendly", "Must be pet friendly."),
+    "near_park": ("nice", "park", "Nice to be near a park or green space."),
+    "quiet_street": ("nice", "quiet", "Prefer a quiet street, not a main road."),
+}
+
+
+def _int_or_none(raw: str):
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        return None
+
+
+def _brief_from_form(form) -> "object":
+    """Turn the dashboard search form (free text + structured picks) into a Brief.
+
+    The free text is parsed first (LLM or deterministic), then the structured
+    selections are merged in so the scorer gets explicit must/nice keywords and
+    the free text records the distances a user chose.
+    """
+    from flatfinder.brief import parse
+
+    text = (form.get("brief_text") or "").strip()
+    extra_sentences: list[str] = []
+    must: list[str] = []
+    nice: list[str] = []
+    avoid: list[str] = []
+
+    for field_name, (label, keyword) in _WALK_FIELDS.items():
+        choice = form.get(f"walk_{field_name}", "")
+        if choice == "must5":
+            must.append(keyword)
+            extra_sentences.append(f"Must have {label.lower()} within 5 mins walk.")
+        elif choice == "must10":
+            must.append(keyword)
+            extra_sentences.append(f"Must have {label.lower()} within 10 mins walk.")
+        elif choice == "nice":
+            nice.append(keyword)
+            extra_sentences.append(f"Nice to have {label.lower()} nearby.")
+
+    for field_name, (label, keyword) in _FEATURE_FIELDS.items():
+        choice = form.get(f"feat_{field_name}", "")
+        if choice == "must":
+            must.append(keyword)
+            extra_sentences.append(f"Must have {label.lower()}.")
+        elif choice == "nice":
+            nice.append(keyword)
+            extra_sentences.append(f"Nice to have {label.lower()}.")
+
+    # Chirpie's Picky Filters — niche quick-pick toggles
+    bucket_map = {"must": must, "nice": nice, "avoid": avoid}
+    for field_name, (bucket, keyword, sentence) in _QUICK_PICKS.items():
+        if form.get(f"pick_{field_name}") in ("1", "on", "true"):
+            bucket_map[bucket].append(keyword)
+            extra_sentences.append(sentence)
+
+    full_text = " ".join(filter(None, [text] + extra_sentences)).strip()
+    brief = parse(full_text or "A nice London flat", id="brief-user")
+
+    # structured overrides win over whatever the parser guessed
+    max_price = _int_or_none(form.get("max_price"))
+    if max_price is not None:
+        brief.max_price = max_price
+    min_beds = _int_or_none(form.get("min_beds"))
+    if min_beds is not None:
+        brief.min_beds = min_beds
+    min_sqm = _int_or_none(form.get("min_sqm"))
+    if min_sqm is not None:
+        brief.min_sqm = min_sqm
+    areas = [a.strip() for a in (form.get("areas") or "").split(",") if a.strip()]
+    if areas:
+        brief.areas = areas
+
+    # merge keywords without duplicates, preserving the parser's findings
+    brief.must_have = list(dict.fromkeys(brief.must_have + must))
+    brief.nice_to_have = list(dict.fromkeys(
+        [n for n in brief.nice_to_have if n not in brief.must_have]
+        + [n for n in nice if n not in brief.must_have]))
+    brief.avoid = list(dict.fromkeys(brief.avoid + avoid))
+    return brief
+
+
+def _current_brief(store) -> dict | None:
+    """The user's saved search brief, if any (prefers the dashboard-entered one)."""
+    rows = store.briefs()
+    by_id = {r.get("id"): r for r in rows if isinstance(r, dict)}
+    return by_id.get("brief-user") or (rows[0] if rows else None)
+
+
 def create_app() -> Flask:
     template_dir = os.environ.get("FLATFINDER_TEMPLATE_DIR")
     app = Flask(__name__, template_folder=template_dir) if template_dir else Flask(__name__)
@@ -75,6 +195,7 @@ def create_app() -> Flask:
         return render_template("index.html", matches=matches, stats=stats,
                                hours_saved=_hours_saved(stats),
                                heartbeat=_heartbeat(store),
+                               brief=_current_brief(store),
                                pro_price=paypal.PRO_PRICE)
 
     @app.route("/api/matches")
@@ -156,13 +277,29 @@ def create_app() -> Flask:
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)})
 
-    @app.route("/api/seed-demo", methods=["POST"])
-    def api_seed_demo():
-        """Populate the store with the pre-scored demo matches for a guaranteed
-        demo, returning how many were written."""
-        from app_modal import seed_demo_data
-        produced = seed_demo_data(get_store())
-        return jsonify({"ok": True, "count": len(produced)})
+    @app.route("/api/search", methods=["POST"])
+    def api_search():
+        """Save the user's search brief (free text + structured picks) and kick a
+        fresh scan that ranks listings against it. Never 500s."""
+        try:
+            store = get_store()
+            brief = _brief_from_form(request.form)
+            store.upsert_brief(brief.to_dict())
+            store.set_agent_status("scan", "running", started_at=time.time())
+            try:
+                import modal
+                modal.Function.from_name("flat-finder", "trigger").spawn()
+                mode = "modal"
+            except Exception:
+                import app_modal
+                threading.Thread(target=app_modal.run_scan_cycle,
+                                 daemon=True).start()
+                mode = "local"
+            return jsonify({"ok": True, "mode": mode, "brief_id": brief.id,
+                            "must_have": brief.must_have,
+                            "nice_to_have": brief.nice_to_have})
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)})
 
     @app.route("/api/status")
     def api_status():

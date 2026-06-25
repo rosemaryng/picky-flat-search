@@ -72,6 +72,18 @@ def _rule_score(listing: Listing, brief: Brief) -> tuple[float, list[str]]:
             s -= 15
             reasons.append(f"only {listing.beds} beds (<{brief.min_beds})")
 
+    # floor area — reward meeting the minimum, penalise falling short; flag if unknown
+    if brief.min_sqm:
+        if listing.sqm is None:
+            s += _W_MUST_UNKNOWN
+            reasons.append(f"size unconfirmed (want ≥{brief.min_sqm:.0f} sqm)")
+        elif listing.sqm >= brief.min_sqm:
+            s += 6
+            reasons.append(f"roomy: {listing.sqm:.0f} sqm (≥{brief.min_sqm:.0f})")
+        else:
+            s -= 12
+            reasons.append(f"only {listing.sqm:.0f} sqm (<{brief.min_sqm:.0f})")
+
     # area match
     for a in brief.areas:
         if a.lower() in hay:
@@ -130,7 +142,7 @@ def _rule_score(listing: Listing, brief: Brief) -> tuple[float, list[str]]:
     if listing.pois.get("supermarket"):
         s += 2
         reasons.append(f"{listing.pois['supermarket']} supermarkets nearby")
-    if listing.sqm:
+    if listing.sqm and not brief.min_sqm:
         reasons.append(f"{listing.sqm:.0f} sqm")
 
     final = max(0, min(100, round(s, 1)))
@@ -199,6 +211,7 @@ def _llm_score(listing: Listing, brief: Brief):
         "Score how well this rental listing matches the tenant's brief from 0-100.\n"
         f"BRIEF (free text): {brief.text}\n"
         f"BRIEF (structured): max_price={brief.max_price}, min_beds={brief.min_beds}, "
+        f"min_sqm={brief.min_sqm}, "
         f"areas={brief.areas}, must_have={brief.must_have}, nice_to_have={brief.nice_to_have}, "
         f"avoid={brief.avoid}, commute_to={brief.commute_to}\n"
         f"LISTING FACTS: {json.dumps(facts)}\n"

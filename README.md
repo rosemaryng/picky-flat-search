@@ -7,6 +7,16 @@
 Built for the **Cursor "Hands Off" Hackathon**: a self-running agent that does the
 flat-hunting work for you.
 
+## See it in action 🎬
+**Live app:** you can view it at **https://rosemaryng--flat-finder-web.modal.run/**
+
+![Chirpie demo — type a brief, tap picky filters, Chirpie scouts real London nests](docs/media/chirpie-demo.webp)
+
+*A renter types their own brief, sets a minimum floor area, and taps Chirpie's Picky
+Filters (has a lift, no underground nests, pet-friendly, near a park). Start Scouting
+sends Chirpie flying over London — real Rightmove nests rank back with scores,
+bird-voice reasons, and a ready-to-send enquiry draft.*
+
 ## How it works
 1. **You tell Chirpie what you want** in plain English (e.g. "a bright period
    conversion in Paddington or Farringdon, over 35 sqm, under 10 min walk to the Tube").
