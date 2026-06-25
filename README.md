@@ -1,47 +1,60 @@
-# flat-finder — an autonomous London rental agent
+# Chirpie 🐦 — your autonomous London nest-finder
 
-> Built for the **Cursor "Hands Off" Hackathon**: a self-running business where AI
-> agents do the work. You write a brief in plain English, walk away, and the agent
-> hunts listings, enriches them with data humans never check (EPC, floorplan, commute,
-> nearby gyms/shops), scores them against your wishlist, and drafts the enquiry to
-> register interest / book a viewing.
+> **Stop the hunt. Let Chirpie fly the London streets to find your perfect nest.**
+> The only rental agent that flies tirelessly while you sleep — finding, scoring, and
+> drafting enquiries for your perfect London flat on autopilot, no matter how picky you are.
+
+Built for the **Cursor "Hands Off" Hackathon**: a self-running agent that does the
+flat-hunting work for you.
+
+## How it works (in plain English)
+1. **You tell Chirpie what you want** in plain English (e.g. "a bright period
+   conversion in Paddington or Farringdon, over 35 sqm, under 10 min walk to the Tube").
+2. **Chirpie searches every hour**, scanning London listings for you automatically.
+3. **It checks the things you'd never have time to** — energy rating (EPC), walk to
+   the Tube, nearby supermarkets and gyms, floor area, and which way the windows face.
+4. **It scores every flat against your wishlist** and keeps only the real matches,
+   each with a short reason why ("Chirpie loves this one! Just a hop, skip & a jump
+   from the Tube").
+5. **It drafts the enquiry email for you** so you can register interest in one click.
+6. **You just check the dashboard.** New nests appear on their own — no more scrolling.
 
 ```
-brief (free text)  ─▶  collect  ─▶  enrich  ─▶  score  ─▶  draft enquiry  ─▶  dashboard
-                       Rightmove     EPC API     LLM /        LLM /            + PayPal
-                       OnTheMarket   floorplan    rules        template         revenue
-                                     commute/POI
-   ▲ runs unattended on Modal (cron) · shared state in modal.Dict · money via PayPal ▲
+your brief  ─▶  search  ─▶  check the details  ─▶  score & rank  ─▶  draft email  ─▶  dashboard
+(plain text)    every hour   EPC · Tube · shops      keep real          ready to            new nests
+                             gyms · size · light     matches only       send                appear on their own
 ```
 
-## Why it fits the hackathon
-- **Autonomous:** the `scan` loop runs on a schedule with no human in the loop.
-- **Makes money:** renters pay (PayPal) for the Pro feed + auto-enquiries.
-- **Measurable:** the dashboard shows listings seen, matches, and £ revenue.
+## What makes Chirpie special
+- **Personalised, niche filters.** Normal property sites only let you filter by price,
+  beds and area. Chirpie understands the picky stuff they *can't* search — "white-fronted
+  period house", "high ceilings", "lots of natural light", "south-facing", "under 5 min
+  to a supermarket", "quick hop to the Tube". You describe your dream flat in your own
+  words and Chirpie matches it.
+- **It actually reads each listing for you** — enriching with data humans never check
+  (EPC, floor area, commute, nearby shops) so a missing detail never slips a bad flat in.
+
+## Business model
+- **Subscription:** Chirpie searches for new flats **every hour** and surfaces fresh
+  matches the moment they hit the market — pay monthly to keep your agent flying.
+- **Done-for-you enquiries:** Chirpie **drafts the enquiry email for each match**, so you
+  can reach the agent first, faster than anyone scrolling listings by hand.
 
 ## Quickstart (zero keys, runs offline)
-The core pipeline is **stdlib-only** and ships with deterministic fallbacks, so it
-runs with no API keys at all.
+The core pipeline ships with deterministic fallbacks, so it runs with no API keys.
 
 ```bash
-pip install -r requirements.txt        # only needed for the web UI / integrations
-python run_local.py                    # pulls real London listings, scores a demo brief
-python -m web.app                      # dashboard at http://localhost:5000
+pip install -r requirements.txt
+python run_local.py          # pulls real London listings, scores a demo brief
+python -m web.app            # dashboard at http://localhost:5000
 ```
 
-`run_local.py` pulls live listings, enriches the top few (commute time via TfL,
-nearby POIs via OpenStreetMap), scores them against a demo brief, and prints a
-ranked shortlist with reasons. Results persist to `local_db.json` and render in
-the dashboard.
-
-### Run locally (one command)
 If you have `make`, the fastest path is `make setup && make web`, then open
-http://localhost:5000. See **[docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)** for
-copy-paste steps (macOS, Linux, and Windows PowerShell) plus troubleshooting.
+http://localhost:5000. See **[docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)** for copy-paste
+steps (macOS, Linux, Windows PowerShell) and troubleshooting.
 
 ## Add real intelligence (optional keys)
-Drop these into `.env` (see `.env.example`) and the matching upgrades turn on
-automatically:
+Drop these into `.env` (see `.env.example`) and the matching upgrades turn on automatically:
 
 | Key | Unlocks |
 |---|---|
@@ -57,9 +70,9 @@ automatically:
 pip install modal && modal token new
 modal secret create flatfinder-secrets OPENAI_API_KEY=... \
     PAYPAL_CLIENT_ID=... PAYPAL_SECRET=...
-modal deploy app_modal.py     # scan() now runs every hour, unattended
+modal deploy app_modal.py     # the hourly search now runs unattended
 ```
-- `scan` — scheduled monitor (collect → enrich → match → draft)
+- `scan` — the hourly search (collect → enrich → match → draft)
 - `submit` — on-demand register-interest / viewing request for one match
 - `web` — the dashboard as a Modal web endpoint
 
@@ -69,26 +82,25 @@ flatfinder/
   collectors/   rightmove.py, onthemarket.py  (+ base parser)
   enrich/       epc.py, floorplan.py (vision), geo.py (commute + POIs)
   brief.py      free-text  -> structured Brief (LLM or heuristic)
-  scoring.py    listing × brief -> score + reasons (LLM or rules)
+  scoring.py    listing × brief -> score + bird-voice reasons (LLM or rules)
   enquiry.py    draft (+ optional Playwright submit, off by default)
-  store.py      shared modal.Dict or local-JSON store (same interface)
+  store.py      shared modal.Dict / Supabase / local-JSON store (same interface)
   pipeline.py   the hands-off loop
 payments/paypal.py     sandbox checkout + capture
-web/app.py             Flask dashboard
+web/app.py             Flask dashboard (Chirpie UI)
 app_modal.py           Modal deployment
 ```
 
 ## Important caveats (read before going to production)
-- **Portal ToS / scraping.** Rightmove & Zoopla forbid scraping and block bots
-  (Zoopla already 403s). The collectors here are for the **demo** — for a real
-  product, switch the data layer to **parsing the portals' own email alerts** or a
-  licensed feed. The store/collector split makes this swap easy.
-- **Auto-submitting enquiries** can breach ToS, hit CAPTCHAs, and annoy agents.
-  It is **disabled by default** (`ALLOW_AUTO_SUBMIT`); the intended UX is
-  "agent drafts → you approve → send". Auto-acting *as* a tenant also raises
-  impersonation/wasted-viewing concerns — keep a human approval step.
-- **"Window facing" / orientation** is often a best-effort estimate (from the
-  floorplan's compass arrow), not ground truth.
+- **Portal ToS / scraping.** Rightmove & Zoopla forbid scraping and block bots. The
+  collectors here are for the **demo** — for a real product, switch the data layer to
+  **parsing the portals' own email alerts** or a licensed feed. The store/collector
+  split makes this swap easy.
+- **Auto-submitting enquiries** can breach ToS and annoy agents. It is **disabled by
+  default** (`ALLOW_AUTO_SUBMIT`); the intended UX is "Chirpie drafts → you approve → send".
+- **"Window facing" / orientation** is often a best-effort estimate (from the floorplan's
+  compass arrow), not ground truth.
 
 ## License
 MIT — hackathon prototype, not investment or housing advice.
+</content>
