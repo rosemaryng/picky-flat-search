@@ -6,35 +6,61 @@
   <title>flat-finder — autonomous London rental agent</title>
   <style>
     :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
     body { font-family: -apple-system, system-ui, sans-serif; margin: 0;
            background: #0b0d10; color: #e8eaed; }
     header { padding: 24px 32px; border-bottom: 1px solid #1d2127;
-             display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+             display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     h1 { font-size: 20px; margin: 0; }
     .sub { color: #9aa0a6; font-size: 13px; }
-    .stats { display: flex; gap: 28px; margin-left: auto; }
-    .stat b { font-size: 22px; display: block; }
+    .stats { display: flex; gap: 28px; margin-left: auto; flex-wrap: wrap; }
+    .stat b { font-size: 22px; display: block; line-height: 1.2; }
     .stat span { color: #9aa0a6; font-size: 12px; }
+    .stat .accent { color: #7ee0a8; }
+    .pay { display: flex; gap: 8px; align-items: center; }
     main { padding: 24px 32px; display: grid; gap: 14px; max-width: 1000px; }
+    /* agent heartbeat strip */
+    .heartbeat { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+                 background: #11151a; border: 1px solid #1d2127; border-radius: 10px;
+                 padding: 10px 14px; color: #9aa0a6; font-size: 13px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #5b6470;
+           box-shadow: 0 0 0 0 rgba(126,224,168,.7); }
+    .dot.live { background: #7ee0a8; animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(126,224,168,.6); }
+      70% { box-shadow: 0 0 0 7px rgba(126,224,168,0); }
+      100% { box-shadow: 0 0 0 0 rgba(126,224,168,0); }
+    }
+    .agent-pill { background: #1d2530; color: #aebfd6; font-size: 12px;
+                  padding: 2px 9px; border-radius: 999px; }
     .card { background: #14171c; border: 1px solid #1d2127; border-radius: 12px;
             padding: 16px 18px; }
     .row { display: flex; justify-content: space-between; gap: 16px; }
-    .score { font-size: 26px; font-weight: 700; color: #7ee0a8; min-width: 64px; }
-    .score.low { color: #e0c97e; }
+    /* score badge */
+    .score { font-size: 22px; font-weight: 700; min-width: 56px; height: 56px;
+             display: flex; align-items: center; justify-content: center;
+             border-radius: 12px; color: #0b0d10; background: #7ee0a8; }
+    .score.mid { background: #e0c97e; }
+    .score.low { background: #e2a3b4; }
     .addr { font-weight: 600; }
     .meta { color: #9aa0a6; font-size: 13px; margin-top: 2px; }
     .tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
     .tag { background: #1d2530; color: #aebfd6; font-size: 12px; padding: 2px 8px;
            border-radius: 999px; }
     .tag.neg { background: #33222a; color: #e2a3b4; }
+    .actions { margin-top: 12px; display: flex; align-items: center; gap: 12px;
+               flex-wrap: wrap; }
     details { margin-top: 10px; }
     summary { cursor: pointer; color: #8ab4f8; font-size: 13px; }
     pre { white-space: pre-wrap; background: #0f1216; padding: 12px; border-radius: 8px;
           font-size: 13px; color: #cdd2d8; }
     a { color: #8ab4f8; }
-    .pay { margin-left: auto; }
     button { background: #2f6df6; color: white; border: 0; padding: 8px 14px;
              border-radius: 8px; cursor: pointer; font-size: 13px; }
+    button.ghost { background: #1d2530; color: #aebfd6; }
+    button.send { background: #1f7a4d; }
+    .sent { color: #7ee0a8; font-size: 13px; font-weight: 600; }
+    .sent::before { content: "✓ "; }
   </style>
 </head>
 <body>
@@ -46,13 +72,34 @@
     <div class="stats">
       <div class="stat"><b>{{ stats.listings }}</b><span>listings seen</span></div>
       <div class="stat"><b>{{ stats.matches }}</b><span>matches</span></div>
-      <div class="stat"><b>£{{ '%.2f'|format(stats.revenue) }}</b><span>revenue</span></div>
+      <div class="stat"><b class="accent">{{ hours_saved }}h</b><span>hours saved</span></div>
+      <div class="stat"><b class="accent">£{{ '%.2f'|format(stats.revenue) }}</b><span>revenue</span></div>
     </div>
-    <form class="pay" action="/simulate-payment" method="post">
-      <button type="submit">Upgrade to Pro — £9.99</button>
-    </form>
+    <div class="pay">
+      <form action="/upgrade" method="post">
+        <input type="hidden" name="plan" value="subscription"/>
+        <button class="ghost" type="submit">Subscribe £{{ pro_price }}/mo</button>
+      </form>
+      <form action="/simulate-payment" method="post">
+        <button type="submit">Upgrade to Pro — £{{ pro_price }}</button>
+      </form>
+    </div>
   </header>
+
   <main>
+    <div class="heartbeat">
+      <span class="dot {{ 'live' if heartbeat.alive else '' }}"></span>
+      {% if heartbeat.count %}
+        <span>agent last active <b>{{ heartbeat.last_seen }}</b></span>
+        {% for name, a in heartbeat.agents.items() %}
+          <span class="agent-pill">{{ name }}: {{ a.status }}{% if a.last_matches is defined %} · {{ a.last_matches }} matches{% endif %}</span>
+        {% endfor %}
+      {% else %}
+        <span>no agent has checked in yet — run <code>python run_local.py</code> to start the scan loop</span>
+      {% endif %}
+      <span style="margin-left:auto">{{ stats.briefs }} brief{{ '' if stats.briefs == 1 else 's' }} · {{ stats.viewings }} viewing{{ '' if stats.viewings == 1 else 's' }}</span>
+    </div>
+
     {% if not matches %}
       <p class="sub">No matches yet. Run <code>python run_local.py</code> to populate.</p>
     {% endif %}
@@ -60,7 +107,7 @@
     {% set l = m.listing %}
     <div class="card">
       <div class="row">
-        <div class="score {{ 'low' if m.score < 65 else '' }}">{{ '%.0f'|format(m.score) }}</div>
+        <div class="score {{ 'low' if m.score < 55 else 'mid' if m.score < 70 else '' }}">{{ '%.0f'|format(m.score) }}</div>
         <div style="flex:1">
           <div class="addr">{{ l.address }} — £{{ l.price }} pcm</div>
           <div class="meta">{{ l.source }} · {{ l.beds }} bed{% if l.sqm %} · {{ '%.0f'|format(l.sqm) }} sqm{% endif %}{% if l.epc %} · EPC {{ l.epc }}{% endif %}{% if l.transport and l.transport.walk_min is not none %} · {{ l.transport.walk_min }} min to {{ l.transport.nearest_station }}{% endif %}</div>
@@ -69,9 +116,20 @@
               <span class="tag {{ 'neg' if r.startswith('-') or 'OVER' in r or 'MISSING' in r else '' }}">{{ r }}</span>
             {% endfor %}
           </div>
+          <div class="actions">
+            {% if m.status == 'sent' %}
+              <span class="sent">Enquiry sent</span>
+            {% else %}
+              <form action="/approve-send" method="post">
+                <input type="hidden" name="brief_id" value="{{ m.brief_id }}"/>
+                <input type="hidden" name="listing_id" value="{{ l.id }}"/>
+                <button class="send" type="submit">Approve &amp; send enquiry</button>
+              </form>
+            {% endif %}
+            <a href="{{ l.url }}" target="_blank">Open listing ↗</a>
+          </div>
           <details>
-            <summary>View enquiry draft &amp; link</summary>
-            <p><a href="{{ l.url }}" target="_blank">Open listing ↗</a></p>
+            <summary>View enquiry draft</summary>
             <pre>{{ m.enquiry_draft }}</pre>
           </details>
         </div>
