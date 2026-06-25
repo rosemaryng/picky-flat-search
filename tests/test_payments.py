@@ -164,7 +164,7 @@ def test_index_returns_200_with_empty_local_store(client):
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
-    assert "flat-finder" in body
+    assert "Chirpie" in body
     assert "hours saved" in body
     assert "revenue" in body
 

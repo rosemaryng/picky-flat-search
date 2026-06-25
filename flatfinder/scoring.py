@@ -108,7 +108,8 @@ def _rule_score(listing: Listing, brief: Brief) -> tuple[float, list[str]]:
     walk = listing.transport.get("walk_min")
     if walk is not None and walk <= 10:
         s += 6
-        reasons.append(f"{walk}min walk to {listing.transport.get('nearest_station', 'station')}")
+        station = listing.transport.get('nearest_station', 'the Tube')
+        reasons.append(f"just a hop, skip & a jump ({walk} min) from {station}")
     if brief.commute_to:
         dest = listing.transport.get("commute_min")
         if dest is not None:
@@ -132,7 +133,20 @@ def _rule_score(listing: Listing, brief: Brief) -> tuple[float, list[str]]:
     if listing.sqm:
         reasons.append(f"{listing.sqm:.0f} sqm")
 
-    return max(0, min(100, round(s, 1))), reasons
+    final = max(0, min(100, round(s, 1)))
+    reasons.insert(0, _chirpie_verdict(final))
+    return final, reasons
+
+
+def _chirpie_verdict(score: float) -> str:
+    """A short, bird-voiced headline so the shortlist sounds like Chirpie."""
+    if score >= 85:
+        return "Chirpie loves this one! 🐦"
+    if score >= 70:
+        return "Chirpie likes this nest 🐦"
+    if score >= 55:
+        return "Chirpie might perch here 🐦"
+    return "Not quite Chirpie's nest 🐦"
 
 
 def _feature_state(kw: str, listing: Listing, hay: str):
