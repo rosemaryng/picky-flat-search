@@ -147,6 +147,9 @@ if modal is not None:
         .pip_install("openai", "flask")
         .env({"FLATFINDER_STORE": "modal"})  # use the shared modal.Dict store
         .add_local_python_source("flatfinder", "payments", "web")
+        # Jinja templates aren't .py files, so the package mount above skips them.
+        # Ship them to a dedicated path and point Flask at it via FLATFINDER_TEMPLATE_DIR.
+        .add_local_dir("web/templates", remote_path="/assets/web_templates")
     )
 
     app = modal.App("flat-finder")
@@ -196,6 +199,7 @@ if modal is not None:
     @modal.wsgi_app()
     def web():
         os.environ["FLATFINDER_STORE"] = "modal"
+        os.environ.setdefault("FLATFINDER_TEMPLATE_DIR", "/assets/web_templates")
         from web.app import create_app
         return create_app()
 
