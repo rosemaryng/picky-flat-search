@@ -54,6 +54,14 @@ def test_rule_score_rewards_must_have_lift():
     assert s_with > s_without
 
 
+def test_no_lift_not_misclassified_as_lift():
+    """'no lift' must not also register bare 'lift' (substring overlap)."""
+    b = parse("1 bed Hackney up to £2000, no lift needed")
+    assert "no lift" in b.avoid
+    assert "lift" not in b.must_have
+    assert "lift" not in b.nice_to_have
+
+
 def test_shared_store_coordination(tmp_path):
     """The store doubles as shared memory: agents + notes are readable back."""
     s = LocalStore(path=str(tmp_path / "db.json"))

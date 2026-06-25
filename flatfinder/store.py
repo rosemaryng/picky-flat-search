@@ -18,7 +18,7 @@ import os
 import threading
 import time
 
-from .config import LOCAL_DB_PATH
+from .config import LOCAL_DB_PATH, SUPABASE_KEY, SUPABASE_URL, has_supabase
 
 _lock = threading.Lock()
 
@@ -202,9 +202,116 @@ class ModalStore:
         }
 
 
+class SupabaseStore:
+    """Postgres-backed shared store. Like ModalStore, every agent connects to the
+    same project, so it's shared memory across agents. Match rows keep the full
+    nested `listing` (jsonb) so the interface matches LocalStore/ModalStore."""
+
+    def __init__(self):
+        from supabase import create_client
+        self.sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+    # --- data ---
+    def seen(self, listing_id: str) -> bool:
+        r = self.sb.table("listings").select("id").eq("id", listing_id).execute()
+        return bool(r.data)
+
+    def upsert_listing(self, listing: dict):
+        self.sb.table("listings").upsert(_flat_listing(listing)).execute()
+
+    def add_match(self, match: dict):
+        self.sb.table("matches").upsert({
+            "id": f"{match['brief_id']}::{match['listing']['id']}",
+            "brief_id": match["brief_id"], "listing_id": match["listing"]["id"],
+            "score": match["score"], "reasons": match["reasons"],
+            "enquiry_draft": match["enquiry_draft"], "status": match["status"],
+            "listing": match["listing"],  # keep nested listing so consumers work
+        }).execute()
+
+    def matches(self, min_score: float = 0) -> list[dict]:
+        r = (self.sb.table("matches").select("*").gte("score", min_score)
+             .order("score", desc=True).execute())
+        return r.data or []
+
+    def upsert_brief(self, brief: dict):
+        self.sb.table("briefs").upsert(_flat_brief(brief)).execute()
+
+    def briefs(self) -> list[dict]:
+        rows = self.sb.table("briefs").select("*").execute().data or []
+        # full brief (incl. contact_*) is kept in the jsonb `data` column
+        return [r.get("data") or r for r in rows]
+
+    def record_payment(self, payment: dict):
+        self.sb.table("payments").upsert(payment).execute()
+
+    def revenue(self) -> float:
+        rows = (self.sb.table("payments").select("amount,status")
+                .eq("status", "paid").execute().data or [])
+        return round(sum(float(r["amount"]) for r in rows), 2)
+
+    # --- shared coordination ---
+    def set_agent_status(self, name: str, status: str, **extra):
+        self.sb.table("agents").upsert({
+            "name": name, "status": status, "ts": time.time(), "extra": extra,
+        }).execute()
+
+    def agents(self) -> dict:
+        rows = self.sb.table("agents").select("*").execute().data or []
+        return {r["name"]: r for r in rows}
+
+    def put_note(self, key: str, value):
+        self.sb.table("notes").upsert({"key": key, "value": value, "ts": time.time()}).execute()
+
+    def get_note(self, key: str):
+        r = self.sb.table("notes").select("value").eq("key", key).execute().data or []
+        return r[0]["value"] if r else None
+
+    def notes(self) -> dict:
+        rows = self.sb.table("notes").select("*").execute().data or []
+        return {r["key"]: r["value"] for r in rows}
+
+    def stats(self) -> dict:
+        def count(t):
+            return self.sb.table(t).select("id", count="exact").execute().count or 0
+        return {"listings": count("listings"), "matches": count("matches"),
+                "briefs": count("briefs"), "viewings": 0,
+                "agents": len(self.agents()), "revenue": self.revenue()}
+
+
+def _flat_listing(listing: dict) -> dict:
+    keep = ("id", "source", "url", "price", "beds", "baths", "address", "postcode",
+            "summary", "epc", "sqm")
+    row = {k: listing.get(k) for k in keep}
+    row["data"] = listing
+    return row
+
+
+def _flat_brief(brief: dict) -> dict:
+    """Keep only schema columns; stash the full brief (incl. contact_*) in `data`."""
+    keep = ("id", "text", "max_price", "min_beds", "areas", "must_have",
+            "nice_to_have", "avoid", "commute_to")
+    row = {k: brief.get(k) for k in keep}
+    row["data"] = brief
+    return row
+
+
 def get_store():
-    """LocalStore for offline dev; the shared ModalStore when FLATFINDER_STORE=modal."""
-    if os.environ.get("FLATFINDER_STORE") == "modal":
+    """Auto-pick the backend, or honor FLATFINDER_STORE ("supabase"|"modal"|"local").
+
+    Auto-detect order: Supabase (if SUPABASE_URL/KEY set) -> local JSON.
+    The shared modal.Dict is used when FLATFINDER_STORE=modal (set by the Modal
+    workers); it isn't auto-detected because it requires a Modal context.
+    All backends expose the same interface; Supabase/modal.Dict are shared across agents.
+    """
+    forced = os.environ.get("FLATFINDER_STORE", "")
+    if forced == "local":
+        return LocalStore()
+    if forced == "supabase" or (not forced and has_supabase()):
+        try:
+            return SupabaseStore()
+        except Exception as e:
+            print(f"[store] Supabase unavailable ({e!r}); falling back")
+    if forced == "modal":
         try:
             return ModalStore()
         except Exception as e:

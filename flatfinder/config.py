@@ -10,9 +10,13 @@ RIGHTMOVE_REGION = os.environ.get("RIGHTMOVE_REGION", "87490")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
-# Shared memory backend: "modal" -> named modal.Dict (cross-agent), else local JSON.
+# Shared memory backend. FLATFINDER_STORE forces one ("supabase" | "modal" | "local");
+# otherwise get_store() auto-picks: Supabase if configured -> modal.Dict -> local JSON.
 STORE_BACKEND = os.environ.get("FLATFINDER_STORE", "")
 MODAL_DICT_NAME = os.environ.get("MODAL_DICT_NAME", "flatfinder-shared")
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "") or os.environ.get("SUPABASE_KEY", "")
 
 PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
 PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET", "")
@@ -31,6 +35,10 @@ LOCAL_DB_PATH = os.environ.get("LOCAL_DB_PATH", os.path.join(os.path.dirname(__f
 
 def has_openai() -> bool:
     return bool(OPENAI_API_KEY)
+
+
+def has_supabase() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_KEY)
 
 
 def uses_modal_store() -> bool:

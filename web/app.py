@@ -33,7 +33,8 @@ def create_app() -> Flask:
         store = get_store()
         if token:
             cap = paypal.capture_order(token)
-            store.record_payment({"id": token, "amount": 9.99, "status": "paid",
+            status = "paid" if cap.get("status") == "COMPLETED" else cap.get("status", "unknown")
+            store.record_payment({"id": token, "amount": 9.99, "status": status,
                                   "raw": cap})
         return redirect("/")
 

@@ -41,7 +41,8 @@ automatically:
 | Key | Unlocks |
 |---|---|
 | `OPENAI_API_KEY` | LLM brief-parsing, **floorplan vision** (sqm/aspect), nuanced scoring, human-quality enquiry drafts |
-| `FLATFINDER_STORE=modal` | Shared memory via a named `modal.Dict` every agent can attach to (else local JSON). Set automatically in the Modal workers. |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Shared Postgres store (schema in [`supabase_schema.sql`](supabase_schema.sql)). Auto-selected when set. |
+| `FLATFINDER_STORE` | Force a store backend: `supabase` \| `modal` (named `modal.Dict`) \| `local`. Default auto-picks Supabase → modal.Dict → local JSON. |
 | `PAYPAL_CLIENT_ID` / `PAYPAL_SECRET` | Real (sandbox) checkout; else payments are simulated |
 | `EPC_API_KEY` | Official gov EPC rating + floor area by postcode |
 | `TFL_APP_KEY` | Higher TfL rate limits |

@@ -49,18 +49,27 @@ def _heuristic_parse(text: str, bid: str, **contact) -> Brief:
         beds = int(mb.group(1))
     areas = [a for a in _LONDON_AREAS if a in low]
     must, nice, avoid = [], [], []
-    for f in _FEATURES:
-        if f not in low:
-            continue
-        # classify by the words in a small window *before* the feature
-        idx = low.find(f)
-        before = low[max(0, idx - 24):idx]
-        if re.search(r"\b(no|avoid|without|not?)\b", before) or f in ("basement", "ground floor", "no lift"):
-            avoid.append(f)
-        elif re.search(r"\b(must|need|require|essential)\b", before):
-            must.append(f)
-        else:
-            nice.append(f)
+    consumed: list[tuple[int, int]] = []  # char spans already claimed by a longer feature
+
+    def _overlaps(s: int, e: int) -> bool:
+        return any(s < ce and e > cs for cs, ce in consumed)
+
+    # longest features first so "no lift" claims the span before bare "lift" can
+    for f in sorted(_FEATURES, key=len, reverse=True):
+        for mt in re.finditer(re.escape(f), low):
+            s, e = mt.start(), mt.end()
+            if _overlaps(s, e):
+                continue
+            consumed.append((s, e))
+            before = low[max(0, s - 24):s]  # classify by words just before the feature
+            if re.search(r"\b(no|avoid|without|not?)\b", before) or f in ("basement", "ground floor", "no lift"):
+                bucket = avoid
+            elif re.search(r"\b(must|need|require|essential)\b", before):
+                bucket = must
+            else:
+                bucket = nice
+            if f not in bucket:
+                bucket.append(f)
     commute = ""
     mc = re.search(r"(?:to|near|close to)\s+([a-z ]{3,20}?)(?:,|\.|$| station| tube)", low)
     if mc:
