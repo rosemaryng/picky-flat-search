@@ -34,6 +34,11 @@ nearby POIs via OpenStreetMap), scores them against a demo brief, and prints a
 ranked shortlist with reasons. Results persist to `local_db.json` and render in
 the dashboard.
 
+### Run locally (one command)
+If you have `make`, the fastest path is `make setup && make web`, then open
+http://localhost:5000. See **[docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)** for
+copy-paste steps (macOS, Linux, and Windows PowerShell) plus troubleshooting.
+
 ## Add real intelligence (optional keys)
 Drop these into `.env` (see `.env.example`) and the matching upgrades turn on
 automatically:
