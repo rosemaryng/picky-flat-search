@@ -72,3 +72,19 @@ create table if not exists notes (
   value   jsonb,
   ts      double precision
 );
+
+-- Enrichment cache: EPC ratings, commute times, nearby POIs etc. persist across
+-- runs and agents so the same postcode/listing isn't re-fetched every scan.
+create table if not exists enrichment_cache (
+  key         text primary key,      -- e.g. "epc:E9 5JX", "pois:listing-123"
+  kind        text,                  -- "epc" | "commute" | "pois" | ...
+  value       jsonb,                 -- cached enrichment result
+  updated_at  double precision
+);
+
+-- Helpful indexes for the common access patterns.
+create index if not exists idx_matches_score      on matches (score desc);
+create index if not exists idx_matches_brief_id   on matches (brief_id);
+create index if not exists idx_listings_seen_at   on listings (seen_at desc);
+create index if not exists idx_payments_status    on payments (status);
+create index if not exists idx_enrichment_kind    on enrichment_cache (kind);

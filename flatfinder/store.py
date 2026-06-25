@@ -242,7 +242,7 @@ class SupabaseStore:
         return [r.get("data") or r for r in rows]
 
     def record_payment(self, payment: dict):
-        self.sb.table("payments").upsert(payment).execute()
+        self.sb.table("payments").upsert(_flat_payment(payment)).execute()
 
     def revenue(self) -> float:
         rows = (self.sb.table("payments").select("amount,status")
@@ -276,6 +276,25 @@ class SupabaseStore:
         return {"listings": count("listings"), "matches": count("matches"),
                 "briefs": count("briefs"), "viewings": 0,
                 "agents": len(self.agents()), "revenue": self.revenue()}
+
+    # --- enrichment cache (EPC / commute / POIs persist across runs + agents) ---
+    def cache_enrichment(self, key: str, value, kind: str = ""):
+        self.sb.table("enrichment_cache").upsert({
+            "key": key, "kind": kind, "value": value, "updated_at": time.time(),
+        }).execute()
+
+    def get_enrichment(self, key: str):
+        r = (self.sb.table("enrichment_cache").select("value")
+             .eq("key", key).execute().data or [])
+        return r[0]["value"] if r else None
+
+
+def _flat_payment(payment: dict) -> dict:
+    """Keep only schema columns; stash the full payload in the `raw` jsonb."""
+    keep = ("id", "amount", "status")
+    row = {k: payment.get(k) for k in keep}
+    row["raw"] = payment.get("raw", payment)
+    return row
 
 
 def _flat_listing(listing: dict) -> dict:
