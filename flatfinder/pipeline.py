@@ -2,7 +2,6 @@
 
 This is what Modal runs on a schedule. It returns the new matches it produced.
 """
-from .brief import parse as parse_brief
 from .collectors import collect_all
 from .enquiry import draft_enquiry
 from .enrich import enrich
@@ -43,12 +42,19 @@ def run_scan(briefs: list[Brief], max_price: int = 2500, min_beds: int = 1,
 
 
 def demo_brief() -> Brief:
-    return parse_brief(
-        "1 or 2 bed flat in East London (Hackney, Islington, Clapton or London Fields), "
-        "budget up to £2500 pcm, must have a lift, ideally south facing and bright, "
-        "EPC C or better, close to a tube/overground (under 10 min walk), gym and "
-        "supermarket nearby. Avoid basement and ground floor.",
+    return Brief(
         id="brief-demo",
+        text=("Looking for an area in Paddington or Farringdon. A cute white-fronted house "
+              "or a charming period conversion, larger than 35 square meters. Must be a "
+              "quick hop to the Tube (under 10 mins walk) and close to a grocery store for "
+              "my morning seeds (under 5 mins walk). Bonus points for high ceilings and "
+              "lots of natural light!"),
+        max_price=3200,
+        min_beds=1,
+        areas=["Paddington", "Farringdon"],
+        must_have=["period", "supermarket"],
+        nice_to_have=["high ceilings", "natural light", "south-facing", "gym"],
+        avoid=[],
         contact_name="Rosemary", contact_email="rosemary@example.com",
         contact_phone="07700 900123",
     )

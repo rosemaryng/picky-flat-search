@@ -142,40 +142,43 @@ def demo_listings():
 
     return [
         Listing(
-            id="demo-londonfields-e8", source="Demo", price=2400, beds=2, baths=1,
-            url="https://www.rightmove.co.uk/properties/demo-e8",
-            address="Wilton Way, London Fields, Hackney, E8",
-            postcode="E8 1BG", property_type="Flat",
-            summary="Bright, modern 2-bed with a private balcony and a lift, south "
-                    "facing with floor-to-ceiling windows. Moments from London Fields.",
-            epc="B", sqm=72.0, has_lift=True, floor_level="3rd floor",
+            id="demo-paddington-w2", source="Demo", price=2900, beds=1, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-w2",
+            address="Sussex Gardens, Paddington, W2",
+            postcode="W2 2RU", property_type="Period conversion flat",
+            summary="Charming white-fronted period conversion with soaring high ceilings "
+                    "and floor-to-ceiling sash windows flooding the rooms with natural "
+                    "light. South-facing and moments from Paddington station and Waitrose.",
+            epc="C", sqm=48.0, has_lift=False, floor_level="1st floor",
             aspect="south-facing", pois={"gym": 3, "supermarket": 2, "park": 4},
-            transport={"nearest_station": "London Fields Overground", "walk_min": 5,
-                       "commute_min": 18},
+            transport={"nearest_station": "Paddington Underground", "walk_min": 4,
+                       "commute_min": 16},
         ),
         Listing(
-            id="demo-angel-n1", source="Demo", price=2200, beds=1, baths=1,
-            url="https://www.rightmove.co.uk/properties/demo-n1",
-            address="Duncan Terrace, Islington, N1",
-            postcode="N1 8BZ", property_type="Flat",
-            summary="Light and airy 1-bed in a modern block with a lift and concierge, "
-                    "bright south-facing reception. Steps from Angel.",
-            epc="C", sqm=54.0, has_lift=True, floor_level="5th floor",
-            aspect="south-facing", pois={"gym": 5, "supermarket": 3, "park": 2},
-            transport={"nearest_station": "Angel Underground", "walk_min": 4,
-                       "commute_min": 22},
+            id="demo-farringdon-ec1", source="Demo", price=3050, beds=1, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-ec1",
+            address="St John Street, Farringdon, EC1",
+            postcode="EC1V 4PY", property_type="Period conversion flat",
+            summary="Elegant white-fronted period conversion bursting with natural light, "
+                    "original high ceilings and large bright windows. South-facing, steps "
+                    "from Farringdon station and a Sainsbury's for the morning seeds.",
+            epc="C", sqm=52.0, has_lift=False, floor_level="2nd floor",
+            aspect="south-facing", pois={"gym": 4, "supermarket": 3, "park": 2},
+            transport={"nearest_station": "Farringdon Underground", "walk_min": 5,
+                       "commute_min": 12},
         ),
         Listing(
-            id="demo-clapton-e5", source="Demo", price=2000, beds=1, baths=1,
-            url="https://www.rightmove.co.uk/properties/demo-e5",
-            address="Rushmore Road, Lower Clapton, E5",
-            postcode="E5 0EU", property_type="Flat",
-            summary="Stunning, bright top-floor 1-bed with a lift, south-facing and "
-                    "newly refurbished. Excellent transport links.",
-            epc="C", sqm=56.0, has_lift=True, floor_level="4th floor",
+            id="demo-paddington-house-w2", source="Demo", price=3150, beds=2, baths=1,
+            url="https://www.rightmove.co.uk/properties/demo-w2-house",
+            address="Norfolk Crescent, Paddington, W2",
+            postcode="W2 2DS", property_type="White-fronted period house",
+            summary="Adorable white-fronted period house with grand high ceilings and "
+                    "lots of natural light throughout, south-facing garden. A quick hop "
+                    "to the Tube and a grocery store right on the corner.",
+            epc="B", sqm=70.0, has_lift=False, floor_level="house",
             aspect="south-facing", pois={"gym": 2, "supermarket": 4, "park": 3},
-            transport={"nearest_station": "Clapton Overground", "walk_min": 7,
-                       "commute_min": 25},
+            transport={"nearest_station": "Edgware Road Underground", "walk_min": 6,
+                       "commute_min": 18},
         ),
     ]
 
