@@ -11,7 +11,7 @@ brief (free text)  ─▶  collect  ─▶  enrich  ─▶  score  ─▶  draft
                        Rightmove     EPC API     LLM /        LLM /            + PayPal
                        OnTheMarket   floorplan    rules        template         revenue
                                      commute/POI
-        ▲ runs unattended on Modal (cron) · state in Supabase · money via PayPal ▲
+   ▲ runs unattended on Modal (cron) · shared state in modal.Dict · money via PayPal ▲
 ```
 
 ## Why it fits the hackathon
@@ -41,7 +41,7 @@ automatically:
 | Key | Unlocks |
 |---|---|
 | `OPENAI_API_KEY` | LLM brief-parsing, **floorplan vision** (sqm/aspect), nuanced scoring, human-quality enquiry drafts |
-| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Persistent store (else local JSON). Schema in [`supabase_schema.sql`](supabase_schema.sql) |
+| `FLATFINDER_STORE=modal` | Shared memory via a named `modal.Dict` every agent can attach to (else local JSON). Set automatically in the Modal workers. |
 | `PAYPAL_CLIENT_ID` / `PAYPAL_SECRET` | Real (sandbox) checkout; else payments are simulated |
 | `EPC_API_KEY` | Official gov EPC rating + floor area by postcode |
 | `TFL_APP_KEY` | Higher TfL rate limits |
@@ -49,9 +49,9 @@ automatically:
 ## Deploy hands-off (Modal)
 ```bash
 pip install modal && modal token new
-modal secret create flatfinder-secrets OPENAI_API_KEY=... SUPABASE_URL=... \
-    SUPABASE_SERVICE_KEY=... PAYPAL_CLIENT_ID=... PAYPAL_SECRET=...
-modal deploy app_modal.py     # scan() now runs every 15 min, unattended
+modal secret create flatfinder-secrets OPENAI_API_KEY=... \
+    PAYPAL_CLIENT_ID=... PAYPAL_SECRET=...
+modal deploy app_modal.py     # scan() now runs every hour, unattended
 ```
 - `scan` — scheduled monitor (collect → enrich → match → draft)
 - `submit` — on-demand register-interest / viewing request for one match
@@ -65,7 +65,7 @@ flatfinder/
   brief.py      free-text  -> structured Brief (LLM or heuristic)
   scoring.py    listing × brief -> score + reasons (LLM or rules)
   enquiry.py    draft (+ optional Playwright submit, off by default)
-  store.py      Supabase or local-JSON store (same interface)
+  store.py      shared modal.Dict or local-JSON store (same interface)
   pipeline.py   the hands-off loop
 payments/paypal.py     sandbox checkout + capture
 web/app.py             Flask dashboard

@@ -2,6 +2,5 @@
 # These are for the optional integrations:
 flask>=3.0            # web dashboard
 openai>=1.40          # LLM brief-parsing, floorplan vision, scoring (optional)
-supabase>=2.5         # persistent store (optional; falls back to local JSON)
-modal>=0.64           # hands-off scheduled deployment (optional)
+modal>=0.64           # hands-off scheduling + shared modal.Dict store (optional)
 playwright>=1.44      # enquiry auto-submission (optional, off by default)

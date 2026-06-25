@@ -3,6 +3,7 @@ from flatfinder.brief import parse
 from flatfinder.collectors.base import extract_balanced, guess_postcode
 from flatfinder.models import Listing
 from flatfinder.scoring import _rule_score
+from flatfinder.store import LocalStore
 
 
 def test_extract_balanced_array():
@@ -51,3 +52,15 @@ def test_rule_score_rewards_must_have_lift():
     s_with, _ = _rule_score(with_lift, b)
     s_without, _ = _rule_score(no_lift, b)
     assert s_with > s_without
+
+
+def test_shared_store_coordination(tmp_path):
+    """The store doubles as shared memory: agents + notes are readable back."""
+    s = LocalStore(path=str(tmp_path / "db.json"))
+    s.set_agent_status("scan", "running", last_matches=3)
+    s.put_note("hint", {"region": "E9"})
+    # a second handle (simulating another agent) sees the same state
+    s2 = LocalStore(path=str(tmp_path / "db.json"))
+    assert s2.agents()["scan"]["status"] == "running"
+    assert s2.agents()["scan"]["last_matches"] == 3
+    assert s2.get_note("hint") == {"region": "E9"}
